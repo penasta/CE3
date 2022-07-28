@@ -85,7 +85,8 @@ nome_destino <- c("./dados/AC1.csv","./dados/AC2.csv","./dados/AC3.csv",
               "./dados/MS1.csv","./dados/MS2.csv","./dados/MS3.csv",
               "./dados/MT1.csv","./dados/MT2.csv","./dados/MT3.csv")
 
-download.file(link, nome_destino)
+# Rodar o comando abaixo apenas uma vez para baixar!!!!
+# download.file(link, nome_destino)
 rm(link,nome_destino)
 
 #-------------------------------------------------------------------------------
@@ -94,7 +95,6 @@ rm(link,nome_destino)
 # arquivos baixados para o R. Descreva brevemente o banco de dados.
 # Extra: explore essa amostra sem o comando explícito de download.
 
-if (!require("pacman")) install.packages("pacman")
 p_load(vroom)
 
 AC1 <- vroom("./dados/AC1.csv", 
@@ -108,19 +108,21 @@ AC1 <- vroom("./dados/AC1.csv",
 # c) Quantos arquivos totalizam nossos dados? Qual é o tamanho total 
 # (em Megabytes) de todos os arquivos?
 
-if (!require("pacman")) install.packages("pacman")
-p_load(fs,tidyfst)
+p_load(fs,tidyfst,tidyverse)
 
 fs::file_size("./dados/AC1.csv")
 
 arquivos<-list.files(path="./dados",full.names = T)
 arquivos <- length(arquivos)
+
+# Quantidade de arquivos
 arquivos
 
 sys_time_print({
   dir_info("./dados/") -> info
 })
 
+# Tamanho total dos arquivos
 info %>% 
   summarise_dt(size = sum(size))
 
@@ -131,7 +133,55 @@ info %>%
 # Para tanto, faça a filtragem usando uma conexão `pipe()`. 
 # Observe que a filtragem deve ser feita durante o carregamente, e não após ele.
 
-filtro <- "dir /B | findstr /R /C:"[ASTRAZENECA/FIOCRUZ  ./dados/AC1.csv]""
+filtro <- "findstr ASTRAZENECA/FIOCRUZ C:\\Users\\toled\\Documents\\GitHub\\CE3\\dados\\AC1.csv"
 AC1_AZ <- vroom(pipe(filtro),
                          locale = locale("br", encoding = "UTF-8"),
                 num_threads = 16)
+
+# Quantos megabites deixaram de ser carregados para a memória RAM 
+# (ao fazer a filtragem durante a leitura, e não no próprio `R`)?
+format(object.size(AC1)-object.size(AC1_AZ),units="auto")
+
+#-------------------------------------------------------------------------------
+
+# e) Carregue para o R todos os arquivos da pasta de uma única vez 
+# (usando apenas um comando R, sem métodos iterativos). 
+
+pasta_arquivos <- "./dados/"
+nomes_arquivos <- list.files(pasta_arquivos)
+nomes_arquivos <- str_c(pasta_arquivos, nomes_arquivos)
+
+sys_time_print({
+  df <- vroom(nomes_arquivos, 
+                         locale = locale("br", encoding = "UTF-8"),
+               num_threads = 16)
+})
+# [1] "# Finished in 16.6s elapsed (18.7s cpu)"
+
+# testando com o read_csv ao invés
+
+# sys_time_print({
+#     teste <- read_csv(nomes_arquivos)
+#   })
+
+# [1] "# Finished in 48.2s elapsed (50.9s cpu)"
+
+#-------------------------------------------------------------------------------
+
+## Questão 2: manipulação de dados
+
+a) Utilizando o pacote data.table, repita o procedimento do item 1e), 
+agora mantendo, durante a leitura, apenas as 3 primeiras colunas. Use o pacote 
+geobr para obter os dados sobre as regiões de saúde do Brasil 
+(procure as funções do geobr). Junte (join) os dados da base de vacinações 
+com o das regiões de saúde.
+
+Descreva brevemente o que são as regiões
+(use documentação do governo, não se atenha à documentação do pacote).
+
+#-------------------------------------------------------------------------------
+
+p_load(data.table)
+nomes_arquivos
+fread(file=nomes_arquivos,select=c(1:3))
+
