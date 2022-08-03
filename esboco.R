@@ -1,22 +1,62 @@
+#-------------------------------------------------------------------------------
 
+# TLDR: Se quiser rodar o código inteiro, basta remover o # da linha 150 e rodar
+# o código inteiro. AVISO: Demora cerca de 2h para rodar tudo, num computador com
+# 20GB de RAM e 16 threads de processador.
 
 #-------------------------------------------------------------------------------
 
-# OBS: Irei utilizar o pacote pacman para instalar e carregar os pacotes no
-# decorrer do código, além de utilizar a versão mais recente do R (4.2.1).
+# 0.0 - Do autor
+
+# Universidade de Brasília - Unb
+# Instituto de ciências exatas - IE
+# Departamento de Estatística - CIC
+# Tópicos em estatística 1 - Dados massivos (CE3)
+# Prof. Dr. Guilherme Rodrigues
+# Lista 1
+# Aluno: Bruno Gondim toledo | Matrícula: 15/0167636
+# 1/2022 | 03/08/2022
+# github do projeto: https://github.com/penasta/CE3
+# email do autor: bruno.gondim@aluno.unb.br
+
+#-------------------------------------------------------------------------------
+
+# 0.1 - Do software 
+
+# linguagem de programação utilizada: R (versão 4.2.1).
+# IDE utilizada: RStudio Desktop 2022.07.1+554
+# Pacotes R utilizados: 
+# installr,vroom,fs,tidyfst,tidyverse,data.table,geobr,dtplyr,microbenchmark
 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(installr)
-updateR()
+# p_load(installr)
+# updateR()
+
+# Irei utilizar o pacote pacman para instalar e carregar os pacotes no
+# decorrer do código.
+# Optarei por fazer o carregamento dos pacotes no decorrer do código, conforme
+# a necessidade. Com isso, viso deixar mais claro a partir de qual etapa é
+# necessário cada um dos pacotes utilizados.
 
 #-------------------------------------------------------------------------------
 
-# OBS2: estou utilizando uma máquina cujo processador têm 16 threads. Esse será
+# 0.2: Do hardware
+
+# Estou utilizando uma máquina cujo processador têm 16 threads. Esse será
 # meu default nos comandos que explicitarei o número de thread à serem utilizadas.
 # caso queira utilizar um número diferente de threads, basta trocar o número
 # pelo desejado no comando abaixo
 
 threads <- 16
+
+# Especificações da máquina utilizada para fazer e rodar o código:
+
+# Lenovo Ideapad 3
+# Windows 11
+# CPU AMD Ryzen 7 5700u (16 threads)
+# RAM 20(16 + 4)GB DDR4 3200 Mhz
+# GPU AMD Radeon Vega 8 (Integrada)
+# 256 GB SSD M.2 2242 PCIe NVMe
 
 #-------------------------------------------------------------------------------
 
@@ -28,6 +68,7 @@ threads <- 16
 
 
 # Extra: Faça isso automatizando os downloads e direcionando-os para uma mesma pasta.
+
 
 # Esta pasta deve ser criada com código R. Sugestão: faça com que a máquina 
 # confira se a pasta existe e crie a pasta apenas se não existir.
@@ -103,11 +144,17 @@ nome_destino <- c("./dados/AC1.csv","./dados/AC2.csv","./dados/AC3.csv",
               "./dados/MS1.csv","./dados/MS2.csv","./dados/MS3.csv",
               "./dados/MT1.csv","./dados/MT2.csv","./dados/MT3.csv")
 
+#-------------------------------------------------------------------------------
+
 # Rodar o comando abaixo apenas uma vez para baixar!!!!
 # download.file(link, nome_destino)
+
+#-------------------------------------------------------------------------------
+
 rm(link,nome_destino)
 
 #-------------------------------------------------------------------------------
+
 # b)Usando a função `p_load` (do pacote `pacman`), carregue o pacote `vroom` 
 # (que deve ser usado em toda a Questão 1) e use-o para carregar o primeiro dos 
 # arquivos baixados para o R. Descreva brevemente o banco de dados.
@@ -194,6 +241,8 @@ sys_time_print({
 })
 # Finished in 16.6s elapsed (18.7s cpu)
 
+#-------------------------------------------------------------------------------
+
 # testando com o read_csv ao invés
 
 # sys_time_print({
@@ -234,23 +283,25 @@ sys_time_print({
 # teste <- fread(input=list.files("./dados/", ".csv"),select=c(1:3))
 # Não lê todos os arquivos, apresenta erro.
 
-# Não consegui encotrar nem na documentação, nem na aula de datatable, nem na internet,
-# uma solução para ler todos os arquivos de uma vez com o comando fread. Portanto,
-# sobraram as opções 1: ler os arquivos um por um com o fread e juntá-los, ou usar
-# o comando vroom para ler todos de uma vez, e posteriormente transformar o arquivo lido
-# em um objeto do tipo data.table utilizando o comando as.data.table()
-# irei optar pela segunda opção.
+# Terei, portanto, de usar algum tipo de "recursividade". No caso, a função map do purrr
+# para ler todos os arquivos numa lista, após isso, juntá-los com o comando rbindlist
+
+rm(df_dt)
 
 sys_time_print({
   
-  df <- as.data.table(vroom(file=nomes_arquivos, 
-             locale = locale("br", encoding = "UTF-8"),
-             col_select = (1:3),
-             num_threads = threads))
+  df <- nomes_arquivos %>%
+  map(fread,
+      drop=(4:32),
+      nThread=threads) %>%
+  rbindlist()
   
 })
 
 # Finished in 27.1s elapsed (24.4s cpu)
+
+# p_load(devtools)
+# devtools::install_github("ipeaGIT/geobr", subdir = "r-package")
 
 p_load(geobr)
 # apesar de usar o pacman para carregar o pacote, a instalação teve de ser feita
@@ -276,7 +327,6 @@ sys_time_print({
 class(rs)
 rs <- as.data.table(rs)
 
-
 # Pelas 3 primeiras colunas que o enunciado pediu para ler, nenhuma das 3 variáveis
 # apresenta possibilidade de indexação com o banco de dados do geobr.
 # portanto, irei ler os dados novamente, incluindo a coluna que penso ser a correta
@@ -285,22 +335,26 @@ rs <- as.data.table(rs)
 
 sys_time_print({
   
-  df <- as.data.table(vroom(file=nomes_arquivos, 
-                            locale = locale("br", encoding = "UTF-8"),
-                            col_select = c(1:3,18),
-                            num_threads = threads))
+  df <- nomes_arquivos %>%
+    map(fread,
+        drop=c(4:17,19:32),
+        nThread=threads) %>%
+    rbindlist()
   
 })
+
 # Finished in 24.8s elapsed (26.1s cpu)
 
 # Agora, devemos indexar o município a região de saúde ao qual ele pertence.
 # utizarei uma tabela disponível em https://sage.saude.gov.br/paineis/regiaoSaude/lista.php?output=html&
 # para fazer a indexação.
 
-index <- as.data.table(vroom(file="./index.csv", 
-                          locale = locale("br", encoding = "UTF-8"),
-                          col_select = (4:5),
-                          num_threads = threads))
+sys_time_print({
+  
+  index <- fread("./index.csv",select=(4:5),nThread = threads)
+  
+})
+
 
 colnames(df)[4] <- "regiao ibge"
 
@@ -361,10 +415,11 @@ hj <- head(junto)
 
 sys_time_print({
   
-  df <- as.data.table(vroom(file=nomes_arquivos, 
-                            locale = locale("br", encoding = "UTF-8"),
-                            col_select = c(1:3,18,29),
-                            num_threads = threads))
+  df <- nomes_arquivos %>%
+    map(fread,
+        drop=c(4:17,19:28,30:32),
+        nThread=threads) %>%
+    rbindlist()
   
 })
 
@@ -425,6 +480,8 @@ hj <- head(junto)
 
 # Crie uma tabela com as 5 regiões de saúde com menos vacinados em cada faixa de vacinação.
 
+# Os 5 menos vacinados da faixa "baixo"
+
 tabela <- as.data.table(table(junto$`regiao saude`))
 colnames(tabela) <- c("regiao saude","n")
 
@@ -435,6 +492,22 @@ tabela5 <- merge(tabela, rs, by = "regiao saude")
 tabela5 <- tabela5[,1:6]
 
 tabela5
+
+# Os 5 menos vacinados da faixa "alto"
+
+tabela <- as.data.table(table(junto$`regiao saude`))
+colnames(tabela) <- c("regiao saude","n")
+
+tabela <- tabela[order(n)]
+
+tabela <- filter (tabela, n >= 2957)
+
+tabela5a <- merge(tabela, rs, by = "regiao saude")
+tabela5a <- as.data.table(tabela5a)
+tabela5a <- tabela5a[order(n)]
+tabela5a <- tabela5a[1:5,1:6]
+
+tabela5a
 
 #-------------------------------------------------------------------------------
 
@@ -447,10 +520,147 @@ tabela5
 
 p_load(dtplyr)
 
+dt_df <- lazy_dt(df)
 
+# Verificando o lazy evaluation
+
+p_load(lobstr)
+
+obj_size(df)
+obj_size(dt_df)
+obj_size(df, dt_df)
+
+# > obj_size(df)
+# 1.52 GB
+# > obj_size(dt_df)
+# 1.52 GB
+# > obj_size(df, dt_df)
+# 1.52 GB
+
+# De fato, o objetio lazy criado "dt_df" não está ocupando espaço extra em memória
+# em relação ao objeto original "df".
+
+# limpando um pouco do ambiente para ter memória para trabalhar
+
+rm(AC1,AC1_AZ,hj,info,junto,n,tabela,tabela5,tabela5a,arquivos,filtro,nomes_arquivos,pasta_arquivos,vetor)
+gc()
+rm(dt_df)
+
+#-------------------------------------------------------------------------------
+# Por algum motivo não consegui passar esta parte do código por operadores pipe
+# portanto, vamos linha a linha
+
+dt_df <- left_join(df,index,by="regiao ibge") 
+colnames(rs)[1] <- "regiao saude.x"
+dt_df <- left_join(dt_df,rs,by="regiao saude.x")
+
+dfc <- dt_df %>%
+  collect()
+dfc <- dfc[,1:6]
+
+dfc_dt <- lazy_dt(dfc)
+dfc_dt <- dfc_dt %>%
+  filter(vacina_descricao_dose == "2ª Dose")
+dfc <- dfc_dt %>%
+  collect()
+  
+colnames(dfc)[6] <- "regiao saude"
+dfc$`regiao saude` <- droplevels(dfc$`regiao saude`)
+vetort <- as.numeric(table(dfc$`regiao saude`))
+median(vetort)
+vetort < median(vetort)
+
+# 2507 é a mediana de aplicações/região. Portanto, igual ou maior que isso será alta, e menor será baixa.
+# perceba que a mediana foi alterada, pois fazendo a conta programando com o dtplyr,
+# não houve a perda de observações que aconteceu anteriormente. Logo, com um numero
+# diferente de observações, a conta da mediana apresentou resultado diferente.
+
+n <- dfc %>% 
+  count(`regiao saude`)
+
+dfc <- left_join(dfc, n, by = "regiao saude")
+
+dfc <- dfc %>%
+  mutate(faixa_de_vacinacao = ifelse(n >= 2957,'alto','baixo'))
 
 #-------------------------------------------------------------------------------
 
-# **d)** Com o pacote `microbenchmark`, comparare o tempo de execução do item **c)** quando se adota as funções do `dtplyr` e do `dplyr`.
+# d) Com o pacote microbenchmark, comparare o tempo de execução do item c) 
+# quando se adota as funções do dtplyr e do dplyr.
 
-rm(list = ls())
+p_load(microbenchmark)
+rm(dfc,dfc_dt,dt_df,n,vetort)
+
+# Consolidando tudo feito anteriormente no dtplyr dentro de uma função benchmark;
+
+mbm1 <- microbenchmark({
+  dt_df <- left_join(df,index,by="regiao ibge")
+  colnames(rs)[1] <- "regiao saude.x"
+  dt_df <- left_join(dt_df,rs,by="regiao saude.x")
+  dfc <- dt_df %>%
+    collect()
+  dfc <- dfc[,1:6]
+  dfc_dt <- lazy_dt(dfc)
+  dfc_dt <- dfc_dt %>%
+    filter(vacina_descricao_dose == "2ª Dose")
+  dfc <- dfc_dt %>%
+    collect()
+  colnames(dfc)[6] <- "regiao saude"
+  dfc$`regiao saude` <- droplevels(dfc$`regiao saude`)
+  vetort <- as.numeric(table(dfc$`regiao saude`))
+  median(vetort)
+  vetort < median(vetort)
+  n <- dfc %>% 
+    count(`regiao saude`)
+  dfc <- left_join(dfc, n, by = "regiao saude")
+  dfc <- dfc %>%
+    mutate(faixa_de_vacinacao = ifelse(n >= 2957,'alto','baixo'))
+  rm(dfc,dfc_dt,dt_df,n,vetort)
+  }
+)
+
+# Agora, fazendo o microbenchmark para o dplyr;
+
+rm(dfc,dfc_dt,dt_df,n,vetort)
+detach("package:dtplyr", unload=TRUE)
+
+df <- as_tibble(df)
+
+mbm2 <- microbenchmark({
+  dft <- left_join(df,index,by="regiao ibge")
+  colnames(rs)[1] <- "regiao saude.x"
+  dft <- left_join(dft,rs,by="regiao saude.x")
+  dft <- dft[,1:6]
+  dft <- dft %>%
+    filter(vacina_descricao_dose == "2ª Dose")
+  colnames(dft)[6] <- "regiao saude"
+  dft$`regiao saude` <- droplevels(dft$`regiao saude`)
+  vetort <- as.numeric(table(dft$`regiao saude`))
+  median(vetort)
+  vetort < median(vetort)
+  n <- dft %>% 
+    count(`regiao saude`)
+  dft <- left_join(dft, n, by = "regiao saude")
+  dft <- dft %>%
+    mutate(faixa_de_vacinacao = ifelse(n >= 2957,'alto','baixo'))
+  rm(dft,n,vetort)
+})
+
+# Resultados:
+
+mbm1$expr <- NA
+mbm1$expr <- "DTplyr"
+
+mbm2$expr <- NA
+mbm2$expr <- "Dplyr"
+
+mbm <- rbind(mbm1,mbm2)
+
+# saveRDS(mbm,file="mbm.rds")
+autoplot(mbm)
+
+#-------------------------------------------------------------------------------
+
+# rm(list = ls())
+
+#-------------------------------------------------------------------------------
