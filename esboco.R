@@ -10,7 +10,7 @@
 
 # Universidade de Brasília - Unb
 # Instituto de ciências exatas - IE
-# Departamento de Estatística - CIC
+# Departamento de Estatística - EST
 # Tópicos em estatística 1 - Dados massivos (CE3)
 # Prof. Dr. Guilherme Rodrigues
 # Lista 1
