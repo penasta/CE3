@@ -401,7 +401,7 @@ Nessa lista repetiremos parte do que fizemos na Lista 1.  Se desejar, use o gaba
 
 Questão 1: Criando bancos de dados.
 
-a)Crie um banco de dados SQLite e adicione a tabela gerada no item 1e) da Lista 1.
+a)Crie um banco de dados SQLite e adicione as tabelas consideradas no item 2a) da Lista 1.
 
 b)Refaça as operações descritas no item 2b) da Lista 1 executando códigos sql diretamente no bancode dados criado no itema). Ao final, importe a tabela resultante para o R. Não é necessário descrever novamente o que são as regiões de saúde.
 
@@ -411,6 +411,6 @@ c)Refaça os itens a) e b), agora com um banco de dados MongoDB.
 
 d)Refaça os itens c), agora usando o Apache Spark.
 
-e)Compare o tempo de processamento das 3 abordagens (SQLite, MongoDB e Spark), desde o enviodo comando sql até o recebimento dos resultados noR. Comente os resultados incluindo na análise osresultados obtidos no item 2d) da Lista 1.
+e)Compare o tempo de processamento das 3 abordagens (SQLite, MongoDB e Spark), desde o enviodo comando sql até o recebimento dos resultados no R. Comente os resultados incluindo na análise osresultados obtidos no item 2d) da Lista 1.
 
 Cuidado: A performance pode ser completamente diferente em outros cenários (com outras operações,diferentes tamanhos de tabelas, entre outros aspectos).

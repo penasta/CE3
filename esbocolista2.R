@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 
-# TLDR: 
+# TLDR: A resolução da lista começa de fato a partir da linha 133. 
 
 #-------------------------------------------------------------------------------
 
@@ -60,9 +60,9 @@ threads <- 16
 
 # Por vezes, mesmo fazendo seleção de colunas e filtragem de linhas, o tamanho 
 # final da tabela extrapola oespaço disponível na memória RAM. Nesses casos, 
-# precisamos realizar as operações de manipulaçãoforadoR, em um banco de dados ou 
-# em um sistema de armazenamento distribuído. Outas vezes, os dadosjá estão 
-# armazenados em algum servidor/cluster e queremos carregar para oRparte dele, 
+# precisamos realizar as operações de manipulação fora do R, em um banco de dados
+# ou em um sistema de armazenamento distribuído. Outas vezes, os dados já estão 
+# armazenados em algum servidor/cluster e queremos carregar para o R parte dele, 
 # possivelmenteapós algumas manipulações.
 
 # Nessa lista repetiremos parte do que fizemos na Lista 1.  
@@ -73,36 +73,13 @@ threads <- 16
 
 # Questão 1: Criando bancos de dados.
 
-# a) Crie um banco de dados SQLite e adicione a tabela gerada no item 1e) 
-# da Lista 1.
+# a)Crie um banco de dados SQLite e adicione as tabelas consideradas no item 
+# 2a) da Lista 1.
 
 #-------------------------------------------------------------------------------
 
 # L1-1e) Carregue para o R todos os arquivos da pasta de uma única vez 
 # (usando apenas um comando R, sem métodos iterativos).
-
-#-------------------------------------------------------------------------------
-# Gerando a tabela do item 1e) da lista 1
-p_load(tidyverse,vroom)
-pasta_arquivos <- "./dados/"
-nomes_arquivos <- list.files(pasta_arquivos)
-nomes_arquivos <- str_c(pasta_arquivos, nomes_arquivos)
-
-df1 <- vroom(nomes_arquivos,
-            locale = locale("br", encoding = "UTF-8"),
-            num_threads = threads)
-
-#-------------------------------------------------------------------------------
-
-p_load(RSQLite)
-
-# Criando a DataBase (NÃO INCLUIR ESTA PARTE NO MARKDOWN)
-SQL <- dbConnect(RSQLite::SQLite(), "dfDB.db")
-
-# Criando a tabela dentro da database
-dbWriteTable(SQL, "df_DATA", df1)
-
-dbListTables(SQL)
 
 #-------------------------------------------------------------------------------
 
@@ -113,7 +90,7 @@ dbListTables(SQL)
 
 #-------------------------------------------------------------------------------
 # Começando gerando a tabela da L1-2a)
-p_load(data.table,geobr)
+p_load(tidyverse,vroom,data.table,geobr)
 
 rs <- read_health_region(
   year = 2013,
@@ -123,6 +100,10 @@ rs <- read_health_region(
   )
 
 index <- fread("./index.csv",select=(4:5),nThread = threads)
+
+pasta_arquivos <- "./dados/"
+nomes_arquivos <- list.files(pasta_arquivos)
+nomes_arquivos <- str_c(pasta_arquivos, nomes_arquivos)
 
 df <- nomes_arquivos %>%
   map(fread,
@@ -143,26 +124,25 @@ junto <- subset(junto, vacina_descricao_dose == "2ª Dose")
 rm(df,index,rs)
 df <- junto
 rm(junto)
+df <- df[,1:10]
+
+# Removendo espaços nos nomes das colunas pois está atrapalhando lá na frente
+# a manipulação em SQL
+colnames(df)[1:2] <- c("regiao_saude","regiao_ibge")
 
 #-------------------------------------------------------------------------------
-# Refazendo o item L2- 1a) para o df "correto"
-
 # Criando a DataBase (NÃO INCLUIR ESTA PARTE NO MARKDOWN)
-SQL2 <- dbConnect(RSQLite::SQLite(), "df2b.db")
+p_load(RSQLite)
+SQL <- dbConnect(RSQLite::SQLite(), "dfDB.db")
 
 # Criando a tabela dentro da database
 
-dbWriteTable(SQL2, "df_data2b", df[,1:10])
+dbWriteTable(SQL, "df_dataDB", df)
 
 # Error: Can only bind lists of raw vectors (or NULL)
 # A coluna geometria impede o comando de funcionar. Removerei então essa coluna
 
-dbListTables(SQL2)
-
-#-------------------------------------------------------------------------------
-# Removendo os objetos gerados no item L2-1a)
-
-rm(SQL,df1)
+dbListTables(SQL)
 
 #-------------------------------------------------------------------------------
 
@@ -184,3 +164,207 @@ rm(SQL,df1)
 
 #-------------------------------------------------------------------------------
 
+# 1. Quantidade de vacinados por região de saúde;
+QVRS <- dbGetQuery(SQL,"
+                   SELECT regiao_saude,
+                   COUNT(*) AS 'contagem'
+                   FROM df_dataDB
+                   GROUP BY regiao_saude
+                   ORDER BY contagem DESC
+                   ;")
+
+dbWriteTable(SQL, "qvrs", QVRS)
+
+# 2. Condicionalmente, a faixa de vacinação por região de saúde (alta ou baixa, 
+# em relação à mediana da distribuição de vacinações). 
+# Aparentemente o SQL não tem uma função built-in para mediana. 
+# Calculando a mediana usando SQL
+
+mediana <- dbGetQuery(SQL,"
+                      SELECT AVG(contagem) AS 'mediana'
+                      FROM (
+                      SELECT contagem
+                      FROM qvrs
+                      ORDER BY contagem
+                      LIMIT 2
+                      OFFSET (SELECT (COUNT(*) - 1) / 2
+                      FROM qvrs))
+                      ;")
+
+
+# Tentando colocar a função de mediana junto da criação da nova variável
+teste <- dbGetQuery(SQL,"
+                    SELECT regiao_saude,
+                    SELECT AVG(contagem) AS 'mediana'
+                    FROM (
+                    SELECT contagem
+                    FROM qvrs
+                    ORDER BY contagem
+                    LIMIT 2
+                    OFFSET (SELECT (COUNT(*) - 1) / 2
+                    FROM qvrs)),
+                    SELECT(*) FROM qvrs WHERE contagem >= mediana AS 'faixa_de_vacinacao'
+                    ;")
+
+# Falha 
+
+# Forçando a mão e simplesmente inserindo o valor da mediana na criação da variável
+
+teste <- dbGetQuery(SQL, 'SELECT regiao_saude, contagem
+                    FROM qvrs
+                    WHERE contagem >= 2957 ')
+
+teste2 <- dbGetQuery(SQL, "SELECT regiao_saude, contagem
+                    FROM qvrs
+                    WHERE contagem >= 2957
+                    DECLARE faixa_de_vacinacao NVARCHAR(50)
+                    SELECT faixa_de_vacinacao = 'alta'
+                    ")
+#??????????????
+
+#-------------------------------------------------------------------------------
+
+# c) Refaça os itens a) e b), agora com um banco de dados MongoDB.
+
+#-------------------------------------------------------------------------------
+# a)Crie um banco de dados MongoDB e adicione as tabelas consideradas no item 2a) da Lista 1.
+# Criando o banco MongoDB.
+p_load(mongolite)
+
+mongodf <- mongo(collection = "mongo_df",
+            db = "tab",
+            url ="mongodb://localhost")
+
+#adicionando as tabelas consideradas no item 2a) da Lista 1.
+
+mongodf$insert(df)
+
+#-------------------------------------------------------------------------------
+
+# b)Refaça as operações descritas no item 2b) da Lista 1 executando códigos
+# mongo diretamente no banco de dados criado no itema). Ao final, importe a 
+# tabela resultante para o R.
+
+# L1-2b) No datatable obtido no item a), crie as variáveis descritas abaixo 
+# considerando apenas os pacientes registrados para a segunda dose:
+
+# 1. Quantidade de vacinados por região de saúde;
+# 2. Condicionalmente, a faixa de vacinação por região de saúde (alta ou baixa, 
+# em relação à mediana da distribuição de vacinações). 
+
+# Crie uma tabela com as 5 regiões de saúde com menos vacinados em cada 
+# faixa de vacinação.
+
+#-------------------------------------------------------------------------------
+# Testes
+
+# mongodf$find()
+# mongodf$count('{}')
+#mongodf$count('{regiao_saude}:')
+#Error: Invalid JSON object: {regiao_saude}
+#mongodf$count('{"regiao_saude"}:')
+##Error: Invalid JSON object: {"regiao_saude"}
+#mongodf$count("regiao_saude")
+#Error: Invalid JSON object: regiao_saude 
+#mongodf$count('{"regiao_saude": ""}')
+
+
+
+mongoqvrs <- mongodf$aggregate('[{"$group": {"_id":"$regiao_saude","n": {"$sum":1}}}]')
+
+mongodf$insert(mongoqvrs)
+
+# Tentando calcular a mediana
+#mongoqvrs$run(command = '{db._id.find().sort( {"n":1} ).skip(db._id.count() / 2).limit(1);}')
+#mongoqvrs
+
+#db._id.find().sort( {"n":1} ).skip(db._id.count() / 2).limit(1);
+#mongoqvrs.find().sort( {"n":1} ).skip(db.teams.count() / 2).limit(1);
+#count = db.coll.count();
+#mongodf$find().sort( {"n":1} ).skip(count / 2 - 1).limit(1);
+
+#mongodf$find().sort( {"n":1} ).skip(count() / 2).limit(1);
+
+# não consegui!!
+
+#-------------------------------------------------------------------------------
+
+# d) Refaça os itens c), agora usando o Apache Spark.
+
+#-------------------------------------------------------------------------------
+# a) Crie um banco de dados Apache Spark e adicione as tabelas consideradas
+# no item 2a) da Lista 1.
+p_load(sparklyr)
+
+config <- spark_config()
+config$`sparklyr.shell.driver-memory` <- "4G"
+config$`sparklyr.shell.executor-memory` <- "4G"
+config$spark.yarn.executor.memoryOverhead <- "1g"
+
+sc <- spark_connect(master = "local", config = config)
+
+sparkdf <- copy_to(sc, df)
+# spark_web(sc)
+#-------------------------------------------------------------------------------
+
+# b) Refaça as operações descritas no item 2b) da Lista 1 executando códigos
+# Apache Spark diretamente no banco de dados criado no itema). Ao final, 
+# importe a tabela resultante para o R.
+
+# L1-2b) No datatable obtido no item a), crie as variáveis descritas abaixo 
+# considerando apenas os pacientes registrados para a segunda dose:
+
+# 1. Quantidade de vacinados por região de saúde;
+# 2. Condicionalmente, a faixa de vacinação por região de saúde (alta ou baixa, 
+# em relação à mediana da distribuição de vacinações). 
+
+# Crie uma tabela com as 5 regiões de saúde com menos vacinados em cada 
+# faixa de vacinação.
+
+#-------------------------------------------------------------------------------
+cars <- copy_to(sc, mtcars)
+
+sparktable <- sparkdf %>%
+  count(regiao_saude) %>%
+  show_query()%>%
+  collect()
+
+# não consigo colocar todas as transformações em uma unica sequencia de pipes.
+# portanto terei que ficar coletando, levando pro spark, fazer a operação e repetir.
+
+# Testando antes rodar no R
+
+teste <- sparktable %>%
+  mutate(faixa_vacinacao = ifelse (sparktable$n >= median(sparktable$n),"alto","baixo"))
+
+# Funciona
+
+# Agora mandando para rodar no Spark...
+
+sparktable <- copy_to(sc, sparktable,overwrite = TRUE)
+
+teste <- sparktable %>%
+  mutate(faixa_vacinacao = ifelse (sparktable$n >= median(sparktable$n),"alto","baixo"))%>%
+  show_query()%>%
+  collect()
+
+# Não funciona, não mostra a query e não coleta (?????)
+spark_disconnect() 
+
+#-------------------------------------------------------------------------------
+
+# e) Compare o tempo de processamento das 3 abordagens (SQLite, MongoDB e Spark),
+# desde o envio do comando sql até o recebimento dos resultados no R. Comente os
+# resultados incluindo na análise os resultados obtidos no item 2d) da Lista 1.
+
+# Cuidado: A performance pode ser completamente diferente em outros cenários 
+# (com outras operações,diferentes tamanhos de tabelas, entre outros aspectos).
+
+#-------------------------------------------------------------------------------
+# Comparando o tempo de processamento
+p_load(microbenchmark)
+
+#-------------------------------------------------------------------------------
+# Comentários dos resultados
+
+#-------------------------------------------------------------------------------
