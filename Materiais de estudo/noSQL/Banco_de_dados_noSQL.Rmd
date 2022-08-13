@@ -1,0 +1,190 @@
+---
+title: "Bancos de dados noSQL em R"
+output:
+  rmdformats::downcute:
+    code_folding: show
+    df_print: paged
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+---
+
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+
+
+<!-- \centering -->
+<!-- \raggedright -->
+<!-- \begin{center} -->
+<!--  \Large Universidade de Brasília\\ -->
+<!--  IE - Departamento de Estatística\\ -->
+<!-- \end{center}  -->
+<!--  \vskip 12em -->
+<!-- \begin{center} -->
+<!--  \Large \textbf{Banco de dados usando R} -->
+<!--  \par -->
+<!--  \vskip 7em -->
+<!-- \end{center} -->
+<!-- \setlength{\baselineskip}{.5cm} -->
+<!-- \small \textbf{} -->
+<!-- \par -->
+<!-- \vskip 5em -->
+<!-- \begin{flushright} -->
+<!-- \end{flushright} -->
+<!-- \vskip 6em -->
+<!-- \begin{center} -->
+<!-- \setlength{\baselineskip}{.5cm} -->
+<!-- Brasília\\ -->
+<!-- \vskip 1em -->
+<!-- \today -->
+<!-- \end{center} -->
+<!-- \newpage -->
+
+
+## MongoDB com R
+
+MongoDB é um programa de banco de dados NoSQL que usa documentos do tipo JSON com esquemas. É um banco de dados multiplataforma gratuito e de código aberto. O MongoDB, principal mecanismo de banco de dados NoSQL em uso atualmente, pode ser uma boa alternativa de armazenamento de dados ao analisar dados de grande volume.
+**Para usar o MongoDB com o R, primeiro, é preciso baixar e instalar o MongoDB.**
+
+```{r setup, results = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = T, warnings = F)
+
+# carregando os pacotes necessários
+if (!require("pacman")) install.packages("pacman")
+p_load(dplyr, tidyverse, rmdformats, vroom, 
+       mongolite, DBI, kableExtra)
+```
+
+Foi explicitado que o mongodb usa documentos *JSON*, mas o que é um JSON?
+
+* JSON ou JavaScript Object Notation:
++ Sintaxe para armazenamento e troca de dados;
++ É texto puro;
++ Amplamente utilizada em ambientes web servidor/cliente.
+
+* Regras da sintaxe:
++ Dados são definidos em pares do tipo chave/valor;
++ Dados são separados por vírgulas;
++ Chaves são utilizadas para armazenar objetos;
++ Colchetes são utilizados para armazenar vetores.
+
+Por exemplo, representa-se dados em JSON da seguinte maneira:
+
+"aluno":"Guilherme"
+
+e um objeto JSON:
+{"aluno":"Guilherme", "time":"Flamengo"}
+
+e um vetor JSON:
+"alunos":[
+  {"aluno":"Guilherme", "time":"Flamengo", "idade":37},
+  {"aluno":"Cesar", "time":"Ceilandense", "idade":26,},
+  {"aluno":"Alan", "time":"Vasco", "idade":19}
+]
+
+
+Primeiramente iremos inserir estes dados criados no mongodb e em seguida, vamos inserir os dados de VOO da ANAC. Sendo assim, após instalado o mongodb na maquina devemos nos conectar ao servidor por meio do comando `mongo()` onde `colletion` refere-se ao nome do conjunto de dados e `db` é o database ou para facilitar o entendimento uma especie de pasta. Abaixo é criado uma conexão local e criado uma collection "teste" ao qual iremos inserir os dados da ANAC.
+```{r}
+cx <- mongo(collection = "teste",
+           db = "tab1",
+           url ="mongodb://localhost")
+```
+
+Agora iremos inserir na mesma pasta (db) o conjunto de dados criado e atribuí-lo o nome de alunos usando o comando insert().
+```{r}
+d1 <- c('{"aluno":"Guilherme", "time":"Flamengo", "idade":37}',
+  '{"aluno":"Cesar", "time":"Ceilandense", "idade":26}',
+  '{"aluno":"Alan", "time":"Vasco", "idade":19}')
+
+alunos <- mongo(collection = "alunos", db = "tab1")
+alunos$insert(d1)
+```
+
+Verificando se foi armazenado da maneira pretendida.
+```{r}
+alunos$find()
+```
+
+Por meio do mongodb Compass podemos visualizar nosso armazenamento. Vemos que foi criado a pasta tab1 e dois conjuntos de dados.
+
+![](img1.jpeg){width=300%}
+
+```{r echo=T, message=FALSE, warning=FALSE}
+path <- "../../../dados/combinada2021-01.txt"
+dados <- vroom(path,
+               locale = locale("br", encoding = "latin1"),
+               num_threads = 3)
+
+cx$insert(dados)
+```
+
+
+MongoDB usa sintaxe baseada em JSON para consultar documentos. A consulta vazia {} significa: selecione todos os dados. O mesmo parâmetro de consulta é usado para várias operações, como find(), iterate(), count(), remove() e update(). Precisamos especificar a consulta JSON como uma string em R.
+
+```{r}
+cx$count('{}')
+```
+
+Semelhante ao comando `head()` do R, podemos usar o `find()` para fazer consultas. A seguir consultamos os 6 primeiros registros da coluna de interesse.
+
+```{r}
+cx$find(
+  fields = '{"sg_empresa_icao" : true}',
+  limit = 6
+)
+```
+
+Caso nosso objetivo fosse trazer um conjunto de dados específicos e trabalhar com eles no R poderiamos simplesmente atribuir a consulta realizada por uma query a uma variável. 
+
+```{r}
+n <- cx$find(limit = 200)
+head(n[, c(1:4)])
+```
+
+Suponha que você queira verificar o número de voos que ocorreram nas sextas-feiras.
+
+```{r}
+cx$count('{"nm_dia_semana_referencia": "SEXTA-FEIRA"}')
+```
+
+Ou os diferentes paises deste banco.
+
+```{r}
+cx$distinct("nm_pais")
+```
+
+De forma mais complexa, podemos encontrar o número de voos com cargas pagas superiores a 10.000kg realizados em sextas-feiras.
+```{r}
+cx$count('{"kg_carga_paga":{"$gt":10.000},"nm_dia_semana_referencia": "SEXTA-FEIRA"}')
+```
+
+Vimos acima uma seleção condicionada a grandeza. Para isso podemos ultilizar operadores como: 
+
+* \$eq: equivalência
+* \$gt (\$gte): maior que (maior ou igual)
+* \$lt (\$lte): menor que (menor ou igual)
+* \$ne: não-equivalentes
+
+Por fim, calculamos a seguir o número de registros e a média de carga paga por companhia aérea.
+```{r}
+cx$aggregate('[{"$group": {"_id":"$sg_empresa_icao",
+                     "count": {"$sum":1},
+                     "average":{"$avg":"$kg_carga_paga"}}
+            }]') %>% 
+  slice(1:6) %>% 
+  kbl(., digits=3, position="h") %>%
+  kable_classic(full_width=FALSE) %>%
+  kable_styling(latex_options = "HOLD_position")
+```
+
+
+
+

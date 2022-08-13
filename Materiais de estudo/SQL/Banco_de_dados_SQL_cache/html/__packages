@@ -1,0 +1,16 @@
+pacman
+dplyr
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+stringr
+forcats
+rmdformats
+vroom
+mongolite
+RSQLite
+DBI
+dbplyr

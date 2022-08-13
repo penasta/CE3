@@ -1,0 +1,215 @@
+---
+title: "Bancos de dados em R"
+output:
+  rmdformats::downcute:
+    code_folding: show
+    df_print: paged
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+---
+
+
+```{=html}
+<style>
+body {
+text-align: left}
+</style>
+```
+
+
+
+<!-- \centering -->
+<!-- \raggedright -->
+<!-- \begin{center} -->
+<!--  \Large Universidade de Brasília\\ -->
+<!--  IE - Departamento de Estatística\\ -->
+<!-- \end{center}  -->
+<!--  \vskip 12em -->
+<!-- \begin{center} -->
+<!--  \Large \textbf{Banco de dados usando R} -->
+<!--  \par -->
+<!--  \vskip 7em -->
+<!-- \end{center} -->
+<!-- \setlength{\baselineskip}{.5cm} -->
+<!-- \small \textbf{} -->
+<!-- \par -->
+<!-- \vskip 5em -->
+<!-- \begin{flushright} -->
+<!-- \end{flushright} -->
+<!-- \vskip 6em -->
+<!-- \begin{center} -->
+<!-- \setlength{\baselineskip}{.5cm} -->
+<!-- Brasília\\ -->
+<!-- \vskip 1em -->
+<!-- \today -->
+<!-- \end{center} -->
+<!-- \newpage -->
+
+
+## Conhecimentos Prévios
+
+Antes de criar um banco de dados em sua máquina é necessário compreender que o princípio básico de um *Banco de Dados* é armazenar informações de um sistema e isto pode ser realizado por meio de uma estrutura de dados relacional (SQL) ou não-relacional (NoSQL). Ambas são opções viáveis, no entanto, existem certas distinções que devemos ter em mente para tomarmos a decisão certa.
+
+### Structured Query Language (SQL)
+SQL é a linguagem mais conhecida do mundo e também a mais popular. É utilizada para executar comandos em Banco de Dados Relacionais, isto é, baseado em tabelas. É por meio desta que criamos *databases*, tabelas, colunas, indices, garantimos e revogamos privilégios a usuários e consultamos os dados armazenados no banco de dados.
+SQL é uma linguagem declarativa dividida em conjuntos de comandos Data Definition Language (DDL), Data Manipulation Language (DML), Data Control Language (DCL), Transactional Control Language (TCL) e Data Query Language (DQL).
+Vamos descrever os conjuntos de comandos da linguagem SQL utilizando exemplos baseados em SQLite.
+
+### RSQLite
+RSQLite é a maneira mais fácil de usar um banco de dados do R porque o próprio pacote contém SQLite e não é necessário a instalação de nenhum software externo. 
+
+Como de praxe necessita-se instalar as bibliotecas que serão abordadas e carregá-las no ambiente R.
+
+
+
+```{r setup, results = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = T, warnings = F)
+
+# carregando os pacotes necessários
+if (!require("pacman")) install.packages("pacman")
+p_load(dplyr, tidyverse, rmdformats, stringr, 
+       vroom, mongolite, RSQLite, DBI, dbplyr)
+```
+
+
+
+### Conectando-se a um banco
+Para criar ou conectar-se a uma conexão ao banco de dados SQLite, basta fornecer o nome do local do arquivo para `dbConnect`. 
+
+```{r eval=T}
+mydb <- dbConnect(RSQLite::SQLite(), "my-db.sqlite")
+# dbDisconnect(mydb)
+mydb
+```
+
+Agora, se você precisa apenas de um banco de dados temporário, use "" (para um banco de dados em disco) ou *":memory:" ou "file::memory:"* (para um banco de dados na memória). Este banco de dados será excluído automaticamente quando você se desconectar dele.
+
+Acima criamos uma conexão com dados. Podemos verificar pelo comando a seguir que este não contem nenhuma tabela.
+
+```{r}
+dbListTables(mydb)
+```
+As colunas do SQLite são *BRINT* e você não precisa definir uma chave primária, pois por padrão a tabela terá uma chave baseada no valor da linha.
+*   [B]lob
+*   [R]real
+*   [I]integer
+*   [N]null
+*   [T]text
+
+Sendo assim para criar uma tabela vazia podemos nos basear na sintaxe abaixo do sql:
+
+CREATE TABLE nome_tabela (
+  id,
+  coluna_01,
+  coluna_02,
+  coluna_03
+)
+
+### Criando uma tabela
+
+Para ultilizar algum comando sql podemos usar a função dbGetQuery(), ou seja, abaixo é passado a sintaxe criada acima na conexão anteriormente criada. Além disto, com a função dbListFields() podemos ver o nome das colunas criadas.
+
+```{r}
+names(iris)
+dbSendStatement(
+  mydb,
+  'CREATE TABLE nome_tabela(
+"Sepal.Length",
+"Sepal.Width" ,
+"Petal.Length",
+"Petal.Width" ,
+"Species")'
+)
+dbListFields(mydb, "nome_tabela")
+```
+Outra forma seria usar o comando abaixo mas antes será necessario remover a tabela existente.
+
+```{r}
+dbRemoveTable(mydb,"nome_tabela")
+dbCreateTable(mydb, "nome_tabela", iris)
+dbListFields(mydb, "nome_tabela")
+```
+
+Agora para inserir os dados podemos usar a função dbAppendTable() e para visulizar a função dbReadTable().
+
+```{r}
+dbAppendTable(mydb, "nome_tabela", iris)
+dbReadTable(mydb, "nome_tabela")
+```
+
+Outra forma de executar os passos acima e ainda mais direta será ultilizada para inserir os dados de VOO da ANAC, para isso é necessário importa-lo.
+
+```{r message=FALSE, warning=FALSE}
+(pasta_arquivos <- "../../../dados/")
+nomes_arquivos <- list.files(pasta_arquivos, "combinada202") %>% 
+  str_c(pasta_arquivos, .)
+
+vroom(nomes_arquivos[1],
+               locale = locale("br", encoding = "latin1"),
+               num_threads = 3) %>% 
+dbWriteTable(mydb, "dados", .)
+  
+append_na_db <- function(arquivo, conn) {
+  vroom(arquivo,
+               locale = locale("br", encoding = "latin1"),
+               num_threads = 3) %>% 
+  dbAppendTable(conn, "dados", .)
+}
+  
+walk(nomes_arquivos[-1],
+      append_na_db, 
+      conn = mydb)
+```
+
+Os arquivos foram empilhados na tabela dados. A seguir utilizamos códigos sql para identificar o número de linhas e extrair as 5 primeiras linhas e  
+
+```{r}
+dbGetQuery(mydb, "SELECT COUNT(*) FROM dados") 
+
+dbGetQuery(mydb, "SELECT * FROM dados LIMIT 5") 
+```
+
+
+### Criando scripts em SQL
+
+ultilizando funções do dplyr podemos calcular, por exemplo, a média dos da carga paga (em Kg) por país e observar os 10 maiores resultados por meio do seguinte código.
+
+```{r}
+# Criando uma referência (no R) à tabela dados (no banco)
+dados <- tbl(mydb, "dados")
+
+# Usando funções do dplyr
+dados %>% group_by(nm_pais) %>%
+  summarise("mediaKgPago" = mean(kg_carga_paga, na.rm = T)) %>%
+  arrange(desc(`mediaKgPago`))
+```
+
+### Tradução script R em SQL
+Frequentemente estamos interessado em saber o comando sql gerado a partir dos comandos do pdlyr. 
+
+```{r}
+dados %>% group_by(nm_pais) %>%
+  summarise("médiaKgPago" = mean(kg_carga_paga, na.rm = T)) %>%
+  arrange(desc(`médiaKgPago`)) %>% 
+  filter(between(row_number(), 1, 10)) %>% 
+  show_query()
+```
+
+```{r}
+dbGetQuery(mydb,
+'SELECT `nm_pais`, `médiaKgPago`
+FROM (SELECT `nm_pais`, `médiaKgPago`, ROW_NUMBER() OVER (ORDER BY `médiaKgPago` DESC) AS `q01`
+FROM (SELECT `nm_pais`, AVG(`kg_carga_paga`) AS `médiaKgPago`
+FROM `dados`
+GROUP BY `nm_pais`))
+WHERE (`q01` BETWEEN 1.0 AND 10.0)')
+```
+
+
+
+
+
+
