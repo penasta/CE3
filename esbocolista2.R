@@ -13,7 +13,7 @@
 # Prof. Dr. Guilherme Rodrigues
 # Lista 2
 # Aluno: Bruno Gondim toledo | Matrícula: 15/0167636
-# 1/2022 | 03/08/2022
+# 1/2022 | 16/08/2022
 # github do projeto: https://github.com/penasta/CE3
 # email do autor: bruno.gondim@aluno.unb.br
 
@@ -24,7 +24,7 @@
 # linguagem de programação utilizada: R (versão 4.2.1).
 # IDE utilizada: RStudio Desktop 2022.07.1+554
 # Pacotes R utilizados: 
-# installr,vroom,fs,tidyfst,tidyverse,data.table,geobr,dtplyr,microbenchmark
+# installr,tidyverse,vroom,data.table,geobr,RSQLite,mongolite,sparklyr,microbenchmark
 
 if (!require("pacman")) install.packages("pacman")
 # p_load(installr)
@@ -66,7 +66,7 @@ threads <- 16
 # possivelmenteapós algumas manipulações.
 
 # Nessa lista repetiremos parte do que fizemos na Lista 1.  
-# Se desejar, use o gabarito da Lista 1 emsubstituição à sua própria solução 
+# Se desejar, use o gabarito da Lista 1 em substituição à sua própria solução 
 # dos respectivos itens.
 
 #-------------------------------------------------------------------------------
@@ -222,6 +222,23 @@ teste2 <- dbGetQuery(SQL, "SELECT regiao_saude, contagem
                     ")
 #??????????????
 
+# partindo então para manipulação com o dplyr
+
+Rqvrs <- tbl(SQL, "df_dataDB")
+
+teste <- Rqvrs %>%
+  count(regiao_saude)%>%
+  mutate(faixa_vacinacao = ifelse (n >= mediana,"alto","baixo"))%>%
+  show_query()
+
+# Error:
+#   ! Cannot translate a data.frame to SQL.
+# ℹ Do you want to force evaluation in R with (e.g.) `!!df$x` or `local(df$x)`?
+
+# Esgotaram minhas ideias.
+
+rm(Rqvrs,teste)
+
 #-------------------------------------------------------------------------------
 
 # c) Refaça os itens a) e b), agora com um banco de dados MongoDB.
@@ -274,9 +291,10 @@ mongoqvrs <- mongodf$aggregate('[{"$group": {"_id":"$regiao_saude","n": {"$sum":
 
 mongodf$insert(mongoqvrs)
 
+
 # Tentando calcular a mediana
-#mongoqvrs$run(command = '{db._id.find().sort( {"n":1} ).skip(db._id.count() / 2).limit(1);}')
-#mongoqvrs
+#teste <- mongoqvrs$run(command = '[{count = db.coll.count();,db.coll.find().sort( {"a":1} ).skip(count / 2 - 1).limit(1)}]')
+#teste
 
 #db._id.find().sort( {"n":1} ).skip(db._id.count() / 2).limit(1);
 #mongoqvrs.find().sort( {"n":1} ).skip(db.teams.count() / 2).limit(1);
@@ -286,6 +304,8 @@ mongodf$insert(mongoqvrs)
 #mongodf$find().sort( {"n":1} ).skip(count() / 2).limit(1);
 
 # não consegui!!
+
+rm(mediana,mongodf,mongoqvrs,SQL)
 
 #-------------------------------------------------------------------------------
 
@@ -322,20 +342,23 @@ sparkdf <- copy_to(sc, df)
 # faixa de vacinação.
 
 #-------------------------------------------------------------------------------
-cars <- copy_to(sc, mtcars)
 
 sparktable <- sparkdf %>%
   count(regiao_saude) %>%
   show_query()%>%
   collect()
 
+sparktable
+mediana <- median(sparktable$n)
 # não consigo colocar todas as transformações em uma unica sequencia de pipes.
 # portanto terei que ficar coletando, levando pro spark, fazer a operação e repetir.
 
 # Testando antes rodar no R
 
-teste <- sparktable %>%
+tabela <- sparktable %>%
   mutate(faixa_vacinacao = ifelse (sparktable$n >= median(sparktable$n),"alto","baixo"))
+tabela<-tabela[order(tabela$n),]
+tabela <- rbind(tabela[1:5,],tabela[102:106,])
 
 # Funciona
 
@@ -349,7 +372,8 @@ teste <- sparktable %>%
   collect()
 
 # Não funciona, não mostra a query e não coleta (?????)
-spark_disconnect() 
+
+tabelaspark <- copy_to(sc, tabela,overwrite = TRUE)
 
 #-------------------------------------------------------------------------------
 
@@ -365,6 +389,7 @@ spark_disconnect()
 p_load(microbenchmark)
 
 #-------------------------------------------------------------------------------
+
 # Comentários dos resultados
 
 #-------------------------------------------------------------------------------
