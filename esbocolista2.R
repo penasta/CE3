@@ -1,6 +1,7 @@
 #-------------------------------------------------------------------------------
 
-# TLDR: A resolução da lista começa de fato a partir da linha 133. 
+# TLDR: A resolução da lista começa de fato a partir da linha 133. (é necessário
+# executar o que está na linha 1 a 133 para funcionar o restante.)
 
 #-------------------------------------------------------------------------------
 
@@ -165,79 +166,56 @@ dbListTables(SQL)
 #-------------------------------------------------------------------------------
 
 # 1. Quantidade de vacinados por região de saúde;
-QVRS <- dbGetQuery(SQL,"
+qvrs <- dbGetQuery(SQL,"
                    SELECT regiao_saude,
-                   COUNT(*) AS 'contagem'
+                   COUNT(*) AS 'quantidade'
                    FROM df_dataDB
                    GROUP BY regiao_saude
-                   ORDER BY contagem DESC
+                   ORDER BY quantidade DESC
                    ;")
 
-dbWriteTable(SQL, "qvrs", QVRS)
+dbWriteTable(SQL, "qvrs", qvrs)
+dbListTables(SQL)
+#-------------------------------------------------------------------------------
 
 # 2. Condicionalmente, a faixa de vacinação por região de saúde (alta ou baixa, 
 # em relação à mediana da distribuição de vacinações). 
 # Aparentemente o SQL não tem uma função built-in para mediana. 
 # Calculando a mediana usando SQL
 
+#-------------------------------------------------------------------------------
+
+dbGetQuery(SQL, 'SELECT * FROM qvrs LIMIT 5')
+
 mediana <- dbGetQuery(SQL,"
-                      SELECT AVG(contagem) AS 'mediana'
+                      SELECT AVG(quantidade) AS 'mediana'
                       FROM (
-                      SELECT contagem
+                      SELECT quantidade
                       FROM qvrs
-                      ORDER BY contagem
+                      ORDER BY quantidade
                       LIMIT 2
                       OFFSET (SELECT (COUNT(*) - 1) / 2
                       FROM qvrs))
                       ;")
 
+mediana <- as.numeric(mediana)
 
-# Tentando colocar a função de mediana junto da criação da nova variável
-teste <- dbGetQuery(SQL,"
-                    SELECT regiao_saude,
-                    SELECT AVG(contagem) AS 'mediana'
-                    FROM (
-                    SELECT contagem
-                    FROM qvrs
-                    ORDER BY contagem
-                    LIMIT 2
-                    OFFSET (SELECT (COUNT(*) - 1) / 2
-                    FROM qvrs)),
-                    SELECT(*) FROM qvrs WHERE contagem >= mediana AS 'faixa_de_vacinacao'
-                    ;")
+dbExecute(SQL,
+          'ALTER TABLE qvrs
+          ADD faixa_de_vacinacao varchar AS
+          (CASE WHEN quantidade > 2957 THEN "Alto" ELSE "Baixo" END)')
 
-# Falha 
+baixo <- dbGetQuery(SQL, 'SELECT * FROM qvrs 
+           ORDER BY quantidade ASC', n = 5)
 
-# Forçando a mão e simplesmente inserindo o valor da mediana na criação da variável
+alto <- dbGetQuery(SQL, 'SELECT * FROM qvrs
+           WHERE faixa_de_vacinacao = "Alto"
+           ORDER BY quantidade ASC', n = 5)
 
-teste <- dbGetQuery(SQL, 'SELECT regiao_saude, contagem
-                    FROM qvrs
-                    WHERE contagem >= 2957 ')
+tabelasql <- rbind(alto,baixo)
+tabelasql
 
-teste2 <- dbGetQuery(SQL, "SELECT regiao_saude, contagem
-                    FROM qvrs
-                    WHERE contagem >= 2957
-                    DECLARE faixa_de_vacinacao NVARCHAR(50)
-                    SELECT faixa_de_vacinacao = 'alta'
-                    ")
-#??????????????
-
-# partindo então para manipulação com o dplyr
-
-Rqvrs <- tbl(SQL, "df_dataDB")
-
-teste <- Rqvrs %>%
-  count(regiao_saude)%>%
-  mutate(faixa_vacinacao = ifelse (n >= mediana,"alto","baixo"))%>%
-  show_query()
-
-# Error:
-#   ! Cannot translate a data.frame to SQL.
-# ℹ Do you want to force evaluation in R with (e.g.) `!!df$x` or `local(df$x)`?
-
-# Esgotaram minhas ideias.
-
-rm(Rqvrs,teste)
+rm(alto,baixo,qvrs)
 
 #-------------------------------------------------------------------------------
 
@@ -388,8 +366,85 @@ tabelaspark <- copy_to(sc, tabela,overwrite = TRUE)
 # Comparando o tempo de processamento
 p_load(microbenchmark)
 
+# não seria justo falar de comparação entre os itens visto que somente na parte
+# de realizar as operações em SQL eu consegui fazer o procedimento por inteiro.
+# Portanto, o que dá para apresentar é o microbenchmark desse item, comparado
+# ao microbenchmark do equivalente na lista 1.
+
+# mbmsql <- microbenchmark({
+
+SQL <- dbConnect(RSQLite::SQLite(), "dfDB.db")
+
+dbWriteTable(SQL, "df_dataDB", df,overwrite=T)
+
+qvrs <- dbGetQuery(SQL,"
+                   SELECT regiao_saude,
+                   COUNT(*) AS 'quantidade'
+                   FROM df_dataDB
+                   GROUP BY regiao_saude
+                   ORDER BY quantidade DESC
+                   ;")
+
+dbWriteTable(SQL, "qvrs", qvrs,overwrite=T)
+
+dbGetQuery(SQL, 'SELECT * FROM qvrs LIMIT 5')
+
+mediana <- dbGetQuery(SQL,"
+                      SELECT AVG(quantidade) AS 'mediana'
+                      FROM (
+                      SELECT quantidade
+                      FROM qvrs
+                      ORDER BY quantidade
+                      LIMIT 2
+                      OFFSET (SELECT (COUNT(*) - 1) / 2
+                      FROM qvrs))
+                      ;")
+
+mediana <- as.numeric(mediana)
+
+dbExecute(SQL,
+          'ALTER TABLE qvrs
+          ADD faixa_de_vacinacao varchar AS
+          (CASE WHEN quantidade > 2957 THEN "Alto" ELSE "Baixo" END)')
+
+baixo <- dbGetQuery(SQL, 'SELECT * FROM qvrs 
+           ORDER BY quantidade ASC', n = 5)
+
+alto <- dbGetQuery(SQL, 'SELECT * FROM qvrs
+           WHERE faixa_de_vacinacao = "Alto"
+           ORDER BY quantidade ASC', n = 5)
+
+tabelasql <- rbind(alto,baixo)
+
+rm(alto,baixo,qvrs,SQL,tabelasql,mediana)
+
+})
+
+# Resultados:
+
+# mbmsql$expr <- NA
+# mbmsql$expr <- "SQLite"
+
+# saveRDS(mbmsql,file="mbmsql.rds")
+
+mbml1 <- readRDS('mbm.rds')
+
+# mbmsql <- readRDS('mbmsql.rds')
+
+mbm <- rbind(mbml1,mbmsql)
+
+autoplot(mbm)
+
+rm(mbml1,mbmsql)
+
+# saveRDS(mbm,file="mbml2.rds")
+
 #-------------------------------------------------------------------------------
 
 # Comentários dos resultados
+
+# Comparando o microbenchmark do SQL com os microbenchmarks do DTplyr e Dplyr (lista 1),
+# percebemos que o SQLite aparentemente foi mais lento que o DTplyr e mais rápido que
+# o Dplyr, porém foi o mais consistente nos tempos de execução.
 
 #-------------------------------------------------------------------------------
