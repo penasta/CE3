@@ -388,29 +388,3 @@ Plotando o `microbenchmark` realizado 100 vezes, podemos observar que o tempo de
 
 ## Considerações finais:
 Este PDF é um relatório formatado a fim de entrega do trabalho de forma direta e elegante. Para acesso ao código completo com comentários sobre os processos, favor observar o arquivo *esboco.r* que segue em anexo na entrega.
-
-
-
-Lista 2
-
-Por vezes, mesmo fazendo seleção de colunas e filtragem de linhas, o tamanho final da tabela extrapola oespaço disponível na memória RAM. Nesses casos, precisamos realizar as operações de manipulaçãoforadoR, em um banco de dados ou em um sistema de armazenamento distribuído. Outas vezes, os dadosjá estão armazenados em algum servidor/cluster e queremos carregar para oRparte dele, possivelmenteapós algumas manipulações.
-
-Nessa lista repetiremos parte do que fizemos na Lista 1.  Se desejar, use o gabarito da Lista 1 emsubstituição à sua própria solução dos respectivos itens.
-
-
-
-Questão 1: Criando bancos de dados.
-
-a)Crie um banco de dados SQLite e adicione as tabelas consideradas no item 2a) da Lista 1.
-
-b)Refaça as operações descritas no item 2b) da Lista 1 executando códigos sql diretamente no bancode dados criado no itema). Ao final, importe a tabela resultante para o R. Não é necessário descrever novamente o que são as regiões de saúde.
-
-Atenção:Pesquise e elabore os comandos sql sem usar a ferramenta de tradução de dplyr para sql.
-
-c)Refaça os itens a) e b), agora com um banco de dados MongoDB.
-
-d)Refaça os itens c), agora usando o Apache Spark.
-
-e)Compare o tempo de processamento das 3 abordagens (SQLite, MongoDB e Spark), desde o enviodo comando sql até o recebimento dos resultados no R. Comente os resultados incluindo na análise osresultados obtidos no item 2d) da Lista 1.
-
-Cuidado: A performance pode ser completamente diferente em outros cenários (com outras operações,diferentes tamanhos de tabelas, entre outros aspectos).
