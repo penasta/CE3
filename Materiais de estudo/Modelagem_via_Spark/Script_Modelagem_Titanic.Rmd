@@ -1,0 +1,278 @@
+---
+title: "TÓPICOS EM ESTATÍSTICA 1 - 1º/2022"
+author: "Prof. Guilherme Rodrigues"
+output:
+  rmdformats::downcute:
+    code_folding: show
+    df_print: paged
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+---
+<style>
+body {
+text-align: justify}
+</style>
+* * *
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## SparklyR (modelagem de dados)
+
+Nesta ilustração, o \alert{Spark} será configurado para utilizar boa parte da capacidade de hardware deste computador pessoal: 6 núcleos executores e 12 GB de RAM. 
+
+```{r}
+# Carregando os pacotes usados
+pacman::p_load(sparklyr, tidyverse)
+
+# Conectando a um cluster spark local
+config <- spark_config()
+config$spark.executor.cores <- 6
+config$spark.executor.memory <- "12G"
+sc <- spark_connect(master = "local", config = config)
+```
+
+### Direcionando local dos arquivos:
+
+Ultilizaremos o conjunto de dados *Titanic* (https://www.kaggle.com/competitions/titanic/data)
+para ilustrar uma modelagem para classificação, na qual tentarmos prever a sobrevivência dos passageiros abordos com base nas covariaveis disponíveis. Para tanto, usaremos um subconjunto dos dados (*train.csv*) para treinar o algoritmo e outro (*test.csv*) para testar seu desempenho preditivo.
+
+```{r}
+# Listando os arquivos considerados
+path <- ".\\titanic"
+list.files(path)
+```
+
+## Leitura dos dados:
+
+```{r warning=FALSE}
+# Carregando os dados para o cluster spark
+{start <- Sys.time()
+titanic_tbl = spark_read_csv(sc=sc, 
+                             name = "titanic_tbl",
+                             path = file.path(path,"train.csv"), 
+                             header = TRUE, 
+                             delimiter = ",", 
+                             charset = "latin1",
+                             infer_schema = T)
+spark_data_read_time <- Sys.time() - start
+}
+
+{tm <- sum(file.size(file.path(path,"train.csv"))/(10^3))
+print(paste("Levou", 
+            round(spark_data_read_time, digits = 2),
+            units(spark_data_read_time),
+            "para carregar o conjunto de dados de",
+            round(tm),
+            "KB no SparklyR"))
+}
+```
+## Dicionário de Variáveis
+
+|Nome |Descrição|
+--|-----
+PassengerID:| Número de identificação do passageiro;
+Survived:| Informa se o passageiro sobreviveu ao naufrágio (0 = não e 1 = sim);
+Pclass:| Classe do bilhete (1 = "1ª classe"; 2 = "2ª classe" e 3 = "3ª classe");
+Name:| Nome do passageiro;
+Sex:| Sexo do passageiro;
+Age:| Idade do passageiro;
+SibSp:| Quantidade de cônjuges e/ou irmãos a bordo;
+Parch:| Quantidade de pais e filhos a bordo;
+Ticket:| Número da passagem;
+Fare:| Preço da passagem;
+Cabin:| Número da cabine do passageiro;
+Embarked:| Porto de embarque: (C = Cherbourg; Q = Queenstown; S = Southampton). 
+
+
+## Análise exploratória:
+
+### Verificando a dimensão e a completude da tabela
+```{r warning=FALSE}
+# Dimensão e atributos da tabela
+sdf_dim(titanic_tbl) # semelhante a funçao dim() porém no ambiente spark
+sdf_describe(titanic_tbl) # semelhante a funçao summary() porém no ambiente spark
+glimpse(titanic_tbl)
+
+# Verificando a quantidade de observações faltantes por variável
+titanic_tbl %>%
+  summarise_all(~sum(as.integer(is.na(.))))
+```
+
+Nossa variavel resposta, `Survided`, varia em função das covariáveis do banco; por exemplo, percebe-se que as mulheres tinham maior probabilidade de sobreviver ao desastre.
+```{r warning=FALSE}
+# Calculando a proporção de sobreviventes por sexo biológico
+titanic_tbl %>%
+  group_by(Sex,Survived) %>% 
+  tally() %>% 
+  mutate(frac = round(n / sum(n),2)) %>% 
+  arrange(Sex,Survived)
+```
+
+Analisando a localidade de embarque dos viajantes, vemos que existe uma ligeira diferença entre as taxas de sobrevicência.
+```{r warning=FALSE}
+# Calculando a proporção de sobreviventes pelo local de embarque
+titanic_tbl %>%
+  group_by(Embarked,Survived) %>% 
+  tally() %>% 
+  mutate(frac = round(n / sum(n),2)) %>% 
+  arrange(Embarked,Survived)
+```
+
+### Distribuições de variáveis. 
+Podemos análisar a distribuição de algumas variaveis usando este comando ou usando collect+ggplot2.
+
+```{r warning=FALSE}
+# Criando um histograma da variável Idade
+library(dbplot)
+options(scipen = 999)
+dbplot_histogram(titanic_tbl, Age)
+```
+
+## Preparando os dados para modelagem:
+
+A fase de preparação consiste em selecionar e corrigir eventuais problemas na tabela. Como visto anteriormente, a variável **Age** apresenta inúmeros dados faltantes (NA). Para não descartar todas as respectivas linhas (o que possivelmente levaria a uma perda de desempenho preditivo), podemos fazer uma *inputação* ultilizando, por exemplo, o valor médio da variável.
+
+```{r warning=FALSE}
+# Inputando a média para os dados faltantes da variável Age
+model_tbl <- titanic_tbl %>%
+  select(Survived, Pclass, Sex, Age, Fare, SibSp, Parch, Name, Embarked) %>%
+  filter(!is.na(Embarked)) %>%
+  mutate(Age = if_else(is.na(Age), mean(Age), Age)) 
+glimpse(model_tbl)
+```
+
+### Feature Engineering
+
+Abaixo efetuaremos uma normalização dos dados de idade e dos preço das passagens.
+```{r warning=FALSE}
+# Calculando as medidas necessárias para a normalização.
+scale_values <- model_tbl %>%
+  summarize(
+    mean_Age = mean(Age),
+    mean_Fare = mean(Fare),
+    sd_Age = sd(Age),
+    sd_Fare = sd(Fare)
+  ) %>%
+  collect()
+
+# Normalizando as variáveis Age e Fare.
+## Usamos !! ou local() para calcular os valores no R
+model_tbl <- model_tbl %>%
+  mutate(scaled_Age = (Age - local(scale_values$mean_Age)) / 
+           !!scale_values$sd_Age,
+         scaled_Fare = (Fare - !!scale_values$mean_Fare) /
+           !!scale_values$sd_Fare)
+
+# Usando a função ft_standard_scaler ou ft_normalizer() 
+# teste <- model_tbl %>% 
+#   ft_vector_assembler(input_col = "Age", 
+#                       output_col = "Age_temp") %>% 
+#   ft_standard_scaler(input_col = "Age_temp", 
+#                 output_col = "Age_scaled2",
+#                 with_mean = T) %>% 
+#   select(Age, Age_temp, scaled_Age, Age_scaled2) %>% 
+#   collect()
+```
+
+Às vezes algumas informações que podem ser de grande utilidade para o modelo não estão devidamente formatadas. Por exemplo, a variavel **Name** é textual, e, a partir dela, pode-se extrair a titularidade do viajante (Mr, Mrs, ...).
+
+```{r warning=FALSE}
+# Criando variáveis que codificam os títulos dos passageiros
+title <- c("Master", "Miss", "Mr", "Mrs")
+
+title_vars <- title %>% 
+  map(~ expr(ifelse(rlike(Name, !!.x), 1, 0))) %>%
+  set_names(str_c("title_", title))
+
+model_tbl <- model_tbl %>% 
+  mutate(local(title_vars),
+    title_Mr = if_else(title_Mrs == 1, 0, title_Mr),
+    title_officer = if_else(
+      title_Mr == 0 && title_Mrs == 0 &&
+        title_Master == 0 && title_Miss == 0, 1, 0))
+
+model_tbl %>%
+  select(starts_with("title"), Name)
+```
+
+
+## Particionando em bases de treinamento e teste:
+
+Em modelagem, é essencial investigar o quão bem o modelo consegue prever novos dados. Para tanto, é importante avaliar o desempenho preditivo em uma parte do conjunto de dados que não tenha sido usada no processo de treinamento.
+
+```{r warning=FALSE}
+# Particionando o conjunto de dados em treino e teste
+partition <- model_tbl %>%
+ sdf_random_split(training = 0.85, test = 0.15, seed = 1281)
+
+# Create table references
+data_training <- sdf_register(partition$train, "trips_train")
+data_test <- sdf_register(partition$test, "trips_test")
+
+# Cache
+tbl_cache(sc, "trips_train")
+tbl_cache(sc, "trips_test")
+```
+
+
+## Regressão logistica
+
+A Regressão logistica é uma das classes de modelos mais usadas quando a variavel resposta é do tipo categorica. 
+
+A fórmula abaixo será ultilizada em nosso modelo; queremos saber se uma pessoa sobreviveu ao titanic (Survived) com base nas variaveis listadas após o simbolo '~'.
+
+```{r warning=FALSE}
+formula <- ('Survived ~ Sex + scaled_Age + scaled_Fare + Pclass +
+            SibSp + Parch + Embarked + title_Mr + title_Mrs + title_Miss +
+            title_Master + title_officer')
+```
+
+Nosso modelo poderia ser feito com no `R` base desta forma:
+```{r warning=FALSE}
+lr_model <- glm(formula,
+                family = binomial(link='logit'),
+                data = data_training)
+summary(lr_model)
+```
+
+Abaixo usaremos o modelo criado para prever a variável Survived no conjunto **data_test**. Vemos que o modelo acertou 84% das observações. 
+```{r warning=FALSE}
+# Prevendo os dados no conjunto de teste
+pred.test <- predict(lr_model, data_test) > 0
+
+# Calculando o percentual de acertos 
+mean(pred.test == data_test %>% pull(Survived)) # Percentual de acertos
+table(pred.test, data_test %>% pull(Survived)) # matrix de confusão
+```
+
+## Regressão logistica usando as funçoes do sparklyr
+```{r}
+lr2_model <- data_training %>%
+  ml_logistic_regression(formula)
+```
+
+### Avaliando o modelo
+```{r warning=FALSE}
+# Prevendo usando o spark - Predict()
+validation_summary <- ml_evaluate(lr2_model, data_test) 
+
+roc <- validation_summary$roc() %>%
+  collect()
+
+validation_summary$area_under_roc()
+```
+
+
+### Gráfico 
+```{r warning=FALSE}
+ggplot(roc, aes(x = FPR, y = TPR)) +
+  geom_line() + geom_abline(lty = "dashed")
+```
+
+
+
