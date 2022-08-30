@@ -1,0 +1,95 @@
+---
+title: ''
+subtitle: ""
+author: ""
+date: ""
+
+output:
+  pdf_document:
+  fig_crop: false
+highlight: tango
+number_sections: false
+fig_caption: true
+keep_tex: true
+includes:
+  in_header: Estilo.sty
+classoption: a4paper
+always_allow_html: true
+---
+  
+  
+\begin{center}
+{\Large
+  DEPARTAMENTO DE ESTATÍSTICA} \\
+\vspace{0.5cm}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=9cm, keepaspectratio]{logo-UnB.eps}
+\end{figure}
+\vskip 1em
+{\large
+  `r format(Sys.time(), '%d %B %Y')`}
+\vskip 3em
+{\LARGE
+  \textbf{Lista 3}} \\
+\vskip 1em
+{\Large
+  Prof. Guilherme Rodrigues} \\
+\vskip 1em
+{\Large
+  Computação em Estatística para dados e cálculos massivos} \\
+\vskip 1em
+{\Large
+  Tópicos especiais em Estatística 1} \\
+\vskip 1em
+{\Large
+  Aluno: Bruno Gondim Toledo | Matrícula: 15/0167636} \\
+\vskip 1em
+\end{center}
+
+\vskip 5em
+
+
+**Questão 1: Criando o cluster spark.**
+
+**a)** Crie uma pasta (chamada datasus) em seu computador e faça o download dos arquivos referentes ao Sistema de informação de Nascidos Vivos (SINASC), os quais estão disponíveis em https://datasus.saude.gov.br/transferencia-de-arquivos/.
+
+**Atenção:** Considere apenas os Nascidos Vivos no Brasil (sigla DN) entre 1994 e 2020, incluindo os dados estaduais e excluindo os arquivos referentes ao Brasil (sigla BR). Use wi-fi para fazer os downloads!
+
+**Dica:** O  endereço  ftp://ftp.datasus.gov.br/dissemin/publicos/SINASC/1996_/Dados/DNRES/permite a imediata identificação dos endereços e arquivos a serem baixados.
+
+**b)** Usando a função `p_load`(do pacote `pacman`), carregue os pacotes `arrow` e `read.dbc` e converta os arquivos baixados no item *a)* para formato o *.parquet*. Em seguida, converta para *.csv* apenas os arquivos referentes aos estados **GO**, **MS** e **ES**. Considerando apenas os referidos estados, compare o tamanho ocupado pelos arquivos nos formatos *.parquet* e *.csv* (use a função `file.size`).
+
+**c)** Crie uma conexão *Spark*, carregue para ele os dados em formato *.parquet* e *.csv* e compare os respectivos tempos computacionais. Se desejar, importe apenas as colunas necessárias para realizar a Questão2.
+
+**OBS:** Lembre-se de que quando indicamos uma pasta na conexão, as colunas escolhidas para a análise precisam existir em todos os arquivos.
+
+**Questão 2: Preparando e modelando os dados.**
+
+**Atenção: Elabore seus comandos dando preferência as funcionalidades do pacote `sparklyr`.**
+
+**a)** Faça uma breve análise exploratória dos dados (tabelas e gráficos) com base somente nas colunas existente nos arquivos de 1996. O dicionário das variaveis encontra-se no mesmo site do item **a)**, na parte de documentação. Corrija eventuais erros encontrados; por exemplo, na variavel sexo são apresentados rótulos distintos para um mesmo significado.
+
+**b)** Utilizando as funções do `sparklyr`, preencha os dados faltantes na idade da mãe com base na mediana.Se necessário, faça imputação de dados também nas demais váriaveis.
+
+**c)** Novamente, utilizando as funções do `sparklyr`, normalize (retire a média e divida pelo desvio padrão)as variáveis quantitativas do banco.
+
+**d)** Crie variáveis *dummy* (*one-hot-encoding*) que conjuntamente indiquem o dia da semana do nascimento(SEG, TER, . . . ). Em seguida,binarize o número de consultas pré-natais de modo que “0” represente “até 5 consultas” e “1” indique “6 ou mais consultas”. (Ultilize as funções **ft_**)
+
+**e)** Particione os dados aleatoriamente em bases de treinamento e teste. Ajuste, sobre a base de treinamento, um modelo de regressão logistica em que a variável resposta (y), indica se o parto foi ou não cesáreo. Analise o desempenho preditivo do modelo com base na matriz de confusão obtida no conjunto de teste.
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!require("pacman")) install.packages("pacman")
+
+threads <- 16
+
+```
+
+```{r inicio, include=FALSE, message=FALSE, warning=FALSE}
+
+p_load(tidyverse,sparklyr)
+
+```
+
