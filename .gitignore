@@ -12,3 +12,4 @@
 *.csv
 .dfcsv
 
+datasus/dfcsv
