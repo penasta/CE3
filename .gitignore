@@ -10,5 +10,5 @@
 *.DBC
 *.parquet
 *.csv
-
+.dfcsv
 
