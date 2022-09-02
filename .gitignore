@@ -6,3 +6,9 @@
 .dfDB
 .dfDB.db
 .datasus
+*.dbc
+*.DBC
+*.parquet
+*.csv
+
+
