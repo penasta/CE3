@@ -304,11 +304,15 @@ rm(arquivosCSV,arquivosPARQUET,destino,i,link,nome,nome2,nomep,selecao,selecao2,
 
 # Criando a conexão Spark
 
-p_load(sparklyr)
+p_load(sparklyrm,benchmarkme)
+
+memoria <- round(as.numeric(get_ram()) * 0.6 / 1000000000)
+memoria <- as.character(memoria)
+memoria <- paste(memoria,'g',sep="")
 
 config <- spark_config()
 config$spark.executor.cores <- threads
-config$spark.executor.memory <- "9G"
+config$spark.executor.memory <- memoria
 sc <- spark_connect(master = "local", config = config)
 rm(config)
 
@@ -863,20 +867,20 @@ summary(lr_model)
 #-------------------------------------------------------------------------------
 # Rodar daqui p baixo, caso crashe, p/ continuar
 
-if (!require("pacman")) install.packages("pacman")
-p_load(pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,vroom,fs,data.table,microbenchmark,dbplot,corrr)
+#####if (!require("pacman")) install.packages("pacman")
+#####p_load(pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,vroom,fs,data.table,microbenchmark,dbplot,corrr,benchmarkme)
 
-config <- spark_config()
-config$spark.executor.cores <- threads
-config$spark.executor.memory <- "9G"
-sc <- spark_connect(master = "local", config = config)
-rm(config)
+#####config <- spark_config()
+#####config$spark.executor.cores <- threads
+#####config$spark.executor.memory <- memoria
+#####sc <- spark_connect(master = "local", config = config)
+#####rm(config)
 
-dfparquet = spark_read_parquet(sc=sc, 
-                               name = "dfparquet",
-                               path = "./datasus/dfparquet", 
-                               header = TRUE, 
-                               delimiter = "\\t", 
-                               charset = "latin1",
-                               infer_schema = T,
-                               overwrite = T)
+#####dfparquet = spark_read_parquet(sc=sc, 
+#####                               name = "dfparquet",
+#####                               path = "./datasus/dfparquet", 
+#####                               header = TRUE, 
+#####                               delimiter = "\\t", 
+#####                               charset = "latin1",
+#####                               infer_schema = T,
+#####                               overwrite = T)
