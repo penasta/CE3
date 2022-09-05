@@ -1,6 +1,9 @@
 #-------------------------------------------------------------------------------
 
-# TLDR: Ctrl + f --> remover ### do código todo p/ rodar pela primeira vez
+# TLDR: Ctrl + f --> remover ### do código todo p/ rodar pela primeira vez.
+# Além disso, adicionei alguns códigos diretamente no Rmarkdown enquanto o 
+# construía. Portanto, uma pequena parte do código lá utilizado não está 
+# neste arquivo R.
 
 #-------------------------------------------------------------------------------
 
@@ -25,7 +28,7 @@
 # IDE utilizada: RStudio Desktop 2022.07.1+554
 # Pacotes R utilizados: 
 # pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,
-# vroom,fs,data.table,microbenchmark,dbplot,corrr
+# vroom,fs,data.table,microbenchmark,dbplot,corrr,scales
 
 if (!require("pacman")) install.packages("pacman")
 # p_load(installr)
@@ -304,7 +307,10 @@ rm(arquivosCSV,arquivosPARQUET,destino,i,link,nome,nome2,nomep,selecao,selecao2,
 
 # Criando a conexão Spark
 
-p_load(sparklyrm,benchmarkme)
+p_load(sparklyr,benchmarkme)
+
+# OBS: É necessário já ter o spark instalado e funcional para o código funcionar
+# a partir daqui, inclusive com o java 8 instalado e funcional também.
 
 memoria <- round(as.numeric(get_ram()) * 0.6 / 1000000000)
 memoria <- as.character(memoria)
@@ -429,6 +435,9 @@ dfparquet <- dfparquet %>%
                           SEXO == 2 ~ 2,
                           SEXO == 1 ~ 1,
                           SEXO == 'M' ~ 1))
+dfparquet <- dfparquet %>%
+  mutate(SEXO = ifelse(SEXO == 0,NA,SEXO))
+
 
 ###dfparquet %>%
 ###  group_by(SEXO) %>% 
@@ -439,6 +448,9 @@ dfparquet <- dfparquet %>%
 ###dfparquet %>%
 ###  group_by(LOCNASC) %>% 
 ###  tally() 
+
+dfparquet <- dfparquet %>%
+  mutate(LOCNASC = ifelse(LOCNASC == 9 ,NA,LOCNASC))
 
 ###dfparquet %>%
 ###  group_by(ESTCIVMAE) %>% 
@@ -453,6 +465,10 @@ dfparquet <- dfparquet %>%
 # a documentação apresenta 6 categorias diferentes. No banco, há mais, no caso, as
 # categorias '7', '6' e '8'. Como não estão documentadas, não é possível inferir nada
 # sobre elas.
+
+dfparquet <- dfparquet %>%
+  mutate(ESCMAE = ifelse(ESCMAE == 9 | ESCMAE == 8 | ESCMAE == 7 | ESCMAE == 6 | ESCMAE == 0,NA,ESCMAE))
+
 
 ###dfparquet %>%
 ###  group_by(GESTACAO) %>% 
@@ -857,30 +873,23 @@ tbl_cache(sc, "df_train")
 tbl_cache(sc, "df_test")
 
 formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
-            APGAR1 + APGAR5 + RACACOR + PESO + CONSULTAS_bin')
+            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin')
 
-lr_model <- glm(formula,
-                family = binomial(link='logit'),
-                data = data_training)
-summary(lr_model)
+#options(java.parameters = "-Xmx8000m")
+#lr_model <- glm(formula,
+#                family = binomial(link='logit'),
+#                data = data_training)
+#summary(lr_model)
+#
+# Não funciona.
+
+#lr2_model <- data_training %>%
+#  ml_logistic_regression(formula)
+#
+# Também não funciona.
 
 #-------------------------------------------------------------------------------
 # Rodar daqui p baixo, caso crashe, p/ continuar
 
-#####if (!require("pacman")) install.packages("pacman")
-#####p_load(pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,vroom,fs,data.table,microbenchmark,dbplot,corrr,benchmarkme)
-
-#####config <- spark_config()
-#####config$spark.executor.cores <- threads
-#####config$spark.executor.memory <- memoria
-#####sc <- spark_connect(master = "local", config = config)
-#####rm(config)
-
-#####dfparquet = spark_read_parquet(sc=sc, 
-#####                               name = "dfparquet",
-#####                               path = "./datasus/dfparquet", 
-#####                               header = TRUE, 
-#####                               delimiter = "\\t", 
-#####                               charset = "latin1",
-#####                               infer_schema = T,
-#####                               overwrite = T)
+#if (!require("pacman")) install.packages("pacman")
+#p_load(pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,vroom,fs,data.table,microbenchmark,dbplot,corrr,benchmarkme)
