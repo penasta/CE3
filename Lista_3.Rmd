@@ -175,7 +175,7 @@ diferenca <- as.data.frame(diferenca)
 
 ```
 
-Diferença no tamanho ocupado pelos arquivos nos formatos *.parquet* e *.csv*
+**Diferença no tamanho ocupado pelos arquivos nos formatos *.parquet* e *.csv***
 
 ```{r 1btabela, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 
@@ -183,7 +183,7 @@ kable(diferenca)
 
 ```
 
-Somando as diferenças, no final os arquivos em *.csv* são `r diferencasomada` (594 Megabytes) maiores que os arquivos em *.parquet*
+Somando as diferenças, no final os arquivos em *.csv* são `r diferencasomada` (**594 Megabytes**) maiores que os arquivos em *.parquet*
 
 \newpage
 
@@ -614,7 +614,7 @@ Diante disso, qual é o perfil dos nascimentos ocorridos nos estados de **Goiás
 ##### 2.1 Objetivo geral:
 
 \begin{enumerate}
-\item \textbf{Verificar o perfil dos nascimentos em hospitais ocorridos nos estados de Goiás, Mato Grosso do Sul e Espírito Santo nos anos de 1994 à 2020.} 
+\item \textbf{Verificar o perfil dos nascimentos ocorridos nos estados de Goiás, Mato Grosso do Sul e Espírito Santo nos anos de 1994 à 2020.} 
 \end{enumerate}
 
 
@@ -662,6 +662,8 @@ plot(diasemana1,
 
 ```
 
+\newpage
+
 Analisando o tipo de parto relacionado ao local de nascimento nós temos:
 ``` {r 2aTabela1, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 kable(tipolocal)
@@ -673,16 +675,18 @@ Segundo **Ratner e Moura** *(2016)*, há uma preponderância dos dias de semana 
 
 \vskip 3em
 
-Este se trata de um ponto importante da presente análise. Segundo um estudo de **Piccini et. al** *(2007)* considerando todos os níveis de análise realizados, foram verificadas diferenças expressivas entre os grupos das mães solteiras e casadas tanto nas seqüências responsivas, em particular com relação ao choro, como nas não-responsivas, quanto ao choro e as vocalizações, apontando que as mães solteiras foram menos responsivas do que as mães casadas. Além disso, verificou-se que embora os comportamentos maternos e infantis durante a interação, embora os resultados tenham mostrado semelhanças entre as mães e os bebês dos dois grupos nas diversas categorias examinadas, o total de comportamentos maternos revelou um maior envolvimento das mães casadas com seus bebês. Tal situação pode demandar uma atenção maior do Estado para esse grupo de mães solteiras na educação de seus filhos.
+Este se trata de um ponto importante da presente análise. Segundo um estudo de **Piccini et. al** *(2007)* considerando todos os níveis de análise realizados, foram verificadas diferenças expressivas entre os grupos das mães solteiras e casadas tanto nas seqüências responsivas, em particular com relação ao choro, como nas não-responsivas, quanto ao choro e as vocalizações, apontando que as mães solteiras foram menos responsivas do que as mães casadas. Além disso, verificou-se que embora os comportamentos maternos e infantis durante a interação, embora os resultados tenham mostrado semelhanças entre as mães e os bebês nas diversas categorias examinadas, o total de comportamentos maternos revelou um maior envolvimento das mães casadas com seus bebês. Tal situação pode demandar uma atenção maior do Estado para esse grupo de mães solteiras na educação de seus filhos.
 Dentro da pesquisa verificou-se uma grande concentração nas situações de união consensual/casada e solteira. O alto número de mães solteiras pode chamar a atenção quanto a necessidade de políticas especiais para esse grupo.
 
-Dados da variável "Estado civil da mãe"
+**Dados da variável "Estado civil da mãe"**
 
 ``` {r 2aTabelaestciv, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 kable(estcivil)
 ```
 
-A respeito do estado civil das mães, verificou-se que `r as.numeric(estcivil[2,2])/sum(estcivil[,2])*100`% eram casadas/união consensual, `r as.numeric(estcivil[4,2])/sum(estcivil[,2])*100`\% eram solteiras, `r as.numeric(estcivil[3,2])/sum(estcivil[,2])*100`\% eram separadas/divorciadas e `r as.numeric(estcivil[1,2])/sum(estcivil[,2])*100`\% eram viúvas. O resultado converge para os resultados da pesquisa de **SCHILLER** (2015), onde identificou-se que 58,33\% das mães eram casadas/união consensual, 40,46\% de mulheres solteiras, apenas 1,03\% de separadas/divorciadas; e, somente 0,19\% de viúvas.
+A respeito do estado civil das mães, verificou-se que `r as.numeric(estcivil[2,2])/sum(estcivil[,2])*100`% eram casadas/união consensual, `r as.numeric(estcivil[4,2])/sum(estcivil[,2])*100`\% eram solteiras, `r as.numeric(estcivil[3,2])/sum(estcivil[,2])*100`\% eram separadas/divorciadas e `r as.numeric(estcivil[1,2])/sum(estcivil[,2])*100`\% eram viúvas. O resultado converge razoavelmente para os resultados da pesquisa de **SCHILLER** (2015), onde identificou-se que 58,33\% das mães eram casadas/união consensual, 40,46\% de mulheres solteiras, apenas 1,03\% de separadas/divorciadas; e, somente 0,19\% de viúvas.
+
+\newpage
 
 ##### 4.3 Análise da variável “peso do recém-nascido”
 
@@ -696,9 +700,9 @@ kable(labels)
 
 ```
 
-Com base nas informações apontadas, a distribuição dos dados tanto da amostra quanto da população da variável “peso do recém-nascido” é uma distribuição leptocúrtica alongada, com uma leve assimetria à esquerda, o que demonstra que a média é menor que a mediana. Neste caso há preponderância de valores inferiores à média.
+Com base nas informações apontadas, a distribuição dos dados tanto da amostra quanto da população da variável “peso do recém-nascido” é uma distribuição leptocúrtica alongada, com uma leve assimetria à direita, o que demonstra que a média é menor que a mediana. Neste caso há preponderância de valores superiores à média.
 
-Histograma da variável "peso do recém-nascido"
+**Histograma da variável "peso do recém-nascido"**
 
 
 ``` {r 2aHistograma, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
@@ -716,8 +720,6 @@ O coeficiente de assimetria de Pearson entre as variáveis peso do recém-nascid
 Analisando a relação entre idade materna e peso do recém-nascido, verificou-se por meio do coeficiente de assimetria de *Pearson*, que a relação é fraca. Todavia, este resultado não converge para o estudo de **Ximenes Aragão e Oliveira** *(2004)*. Segundo as autoras, a associação entre a idade materna e o peso ao nascer demonstra a ocorrência de baixo peso e peso insuficiente diminuindo à medida do aumento da idade materna, revertendo essa tendência quando a idade atinge 35 anos.
 \vskip 1em
 Há três hipóteses para explicar o baixo peso ao nascer em filhos de mães adolescentes: desvantagem social, imaturidade biológica e estilo de vida inadequado durante a gravidez. Com relação aos fatores associados ao baixo peso ao nascer entre os filhos de parturientes acima de 40 anos, como prováveis a hipertensão arterial, ruptura prévia de placenta, cardiopatias e infecção urinária.
-\vskip 1em
-Nesta situação, avalia-se a necessidade de aumentar o período do estudo para que se consiga uma robustez maior na análise e obter um melhor horizonte de informações, avaliar tendências ao longo do tempo e mitigar a existência de eventuais pontos discrepantes da análise.
 \vskip 1em
 O coeficiente de correlação apresentou o resultado de `r correlacao1`, o que significa uma baixa (quase nula) relação positiva entre a idade da mãe e o peso do recém-nascido. Este resultado também discorda dos resultados obtidos nos estudos de **Ximenes Aragão e Oliveira** *(2004)* mencionados anteriormente.
 
@@ -874,35 +876,97 @@ dfparquet <- dfparquet %>%
 
 ## **e)** Particione os dados aleatoriamente em bases de treinamento e teste. Ajuste, sobre a base de treinamento, um modelo de regressão logistica em que a variável resposta (y), indica se o parto foi ou não cesáreo. Analise o desempenho preditivo do modelo com base na matriz de confusão obtida no conjunto de teste.
 
-```{r 2e, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+```{r 2e, eval=FALSE, message=FALSE, warning=FALSE, cache=FALSE, include=FALSE}
 
-# Particionando o conjunto de dados em treino e teste
-###partition <- dfparquet %>%
-###  sdf_random_split(training = 0.85, test = 0.15, seed = 150167636)
+partition <- dfparquet %>%
+  sdf_random_split(training = 0.85, test = 0.15, seed = 150167636)
 
-# Create table references
-###data_training <- sdf_register(partition$train, "df_train")
-###data_test <- sdf_register(partition$test, "df_test")
+data_training <- sdf_register(partition$train, "df_train")
+data_test <- sdf_register(partition$test, "df_test")
 
-# Cache
-###tbl_cache(sc, "df_train")
-###tbl_cache(sc, "df_test")
+tbl_cache(sc, "df_train")
+tbl_cache(sc, "df_test")
 
-###formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
-###            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin')
+formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
+            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin + PESO')
 
-#options(java.parameters = "-Xmx8000m")
-#lr_model <- glm(formula,
-#                family = binomial(link='logit'),
-#                data = data_training)
-#summary(lr_model)
-#
-# Não funciona.
+lr2_model <- ml_logistic_regression(x= data_training,formula=formula)
 
-#lr2_model <- data_training %>%
-#  ml_logistic_regression(formula)
-#
-# Também não funciona.
+validation_summary <- ml_evaluate(lr2_model, data_test) 
+
+##roc <- validation_summary$roc() %>%
+##  collect()
+##validation_summary$area_under_roc()
+
+pred <- ml_predict(lr2_model, data_test)
+
+# Testando outros métodos:
+
+rf_model <- data_training %>%
+  ml_random_forest(formula, type = "classification")
+
+pred4 <- ml_predict(rf_model, data_test)
+
+lr3_model <- ml_generalized_linear_regression(x= data_training,formula=formula)
+
+validation_summary3 <- ml_evaluate(lr3_model, data_test) 
+
+pred3 <- ml_predict(lr3_model, data_test)
+
+pred3 <- pred3 %>%
+  mutate(PARTO = as.numeric(PARTO))
 
 ```
 
+**OBS** A *chunk* dos cálculos dessa questão, apesar de funcionar no ambiente `R`, impede o documento de *knitar* neste arquivo *.Rmd*. 
+Portanto, incluirei aqui somente os resultados, e os códigos (resumidos) utilizados no formato de comentário
+
+```{r 2eCodigos, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+
+#partition <- dfparquet %>%
+#  sdf_random_split(training = 0.85, test = 0.15, seed = 150167636)
+
+#data_training <- sdf_register(partition$train, "df_train")
+#data_test <- sdf_register(partition$test, "df_test")
+
+#tbl_cache(sc, "df_train")
+#tbl_cache(sc, "df_test")
+
+#formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
+#            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin + PESO')
+
+#lr2_model <- ml_logistic_regression(x= data_training,formula=formula)
+#validation_summary <- ml_evaluate(lr2_model, data_test) 
+#pred <- ml_predict(lr2_model, data_test)
+
+#rf_model <- data_training %>%
+#  ml_random_forest(formula, type = "classification")
+#pred4 <- ml_predict(rf_model, data_test)
+
+#lr3_model <- ml_generalized_linear_regression(x= data_training,formula=formula)
+#validation_summary3 <- ml_evaluate(lr3_model, data_test) 
+#pred3 <- ml_predict(lr3_model, data_test)
+#pred3 <- pred3 %>%
+#  mutate(PARTO = as.numeric(PARTO))
+
+```
+
+**Resultados:**
+
+```{r 2eResultados, include=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+
+# ml_multiclass_classification_evaluator(pred)
+
+# [1] 0.6451208
+
+# ml_multiclass_classification_evaluator(pred4)
+
+# [1] 0.6289712
+
+# ml_regression_evaluator(pred3,label_col="PARTO")
+
+# [1] 1.297908
+
+```
+
+A íntegra dos arquivos utilizados neste trabalho encontra-se em meu [github](https://github.com/penasta/CE3)

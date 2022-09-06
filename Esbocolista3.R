@@ -30,6 +30,7 @@
 # pacman,installr,tidyverse,sparklyr,doParallel,readr,foreach,arrow,read.dbc,
 # vroom,fs,data.table,microbenchmark,dbplot,corrr,scales
 
+options(java.parameters = "-Xmx8g")
 if (!require("pacman")) install.packages("pacman")
 # p_load(installr)
 # updateR()
@@ -698,6 +699,107 @@ correlacao1 <- dfparquet %>%
 correlacao1 <- correlate(correlacao1)
 correlacao1 <- as.numeric(correlacao1$IDADEMAE[2])
 
+# Mais alguns ajustes..
+diasemanatibble <- as_tibble(diasemana1)
+diasemanatibble <- diasemanatibble %>%
+  mutate(value = ifelse(value == '"s\u00e1b"', 'sáb', value)) %>%
+  group_by(value) %>%
+  tally ()
+
+diasemanatibble <- diasemanatibble %>%  
+  mutate(value = case_when(value == 1 ~ "dom",
+                           value == 2 ~ "seg",
+                           value == 3 ~ "ter",
+                           value == 4 ~ "qua",
+                           value == 5 ~ "qui",
+                           value == 6 ~ "sex",
+                           value == 7 ~ "sab"
+                           
+  ))
+
+tipolocal <- tipolocal %>%
+  mutate(LOCNASC = case_when(LOCNASC == 1 ~ "Hospital",
+                             LOCNASC == 2 ~ "Outro Estab Saúde",
+                             LOCNASC == 3 ~ "Domicílio")) %>%
+  mutate(PARTO = case_when(PARTO == 1 ~ "Vaginal",
+                           PARTO == 2 ~ "Cesáreo"))
+
+
+colnames(tipolocal) <- c("Local de Nascimento","Tipo de parto","Contagem")
+
+estcivil <- estcivil %>%
+  mutate(ESTCIVMAE = case_when(ESTCIVMAE == 1 ~ "Solteira",
+                               ESTCIVMAE == 2 ~ "Casada",
+                               ESTCIVMAE == 3 ~ "Viúva",
+                               ESTCIVMAE == 4 ~ "Separado judicialmente/Divorciado"))
+
+colnames(estcivil) <- c("Estado civil da mãe","Contagem")
+
+peso <- dfparquet %>%
+  select(PESO) %>%
+  filter(PESO <= '7.500')%>%
+  collect()
+
+sexoraca <- sexoraca %>%
+  mutate(RACACOR = case_when(RACACOR == 1 ~ "Branca",
+                             RACACOR == 2 ~ "Preta",
+                             RACACOR == 3 ~ "Amarela",
+                             RACACOR == 4 ~ "Parda",
+                             RACACOR == 5 ~ "Indígena"
+  )) %>%
+  mutate(SEXO = case_when(SEXO == 1 ~ "Masculino",
+                          SEXO == 2 ~ "Feminino"))
+
+
+
+# Realizando alguns cálculos para a análise exploratória
+
+#coeficiente de variação dos dias da semana:
+dia_freq <- diasemanatibble$n
+dia_freq <- dia_freq[1:7]
+vardiasem <- sd(dia_freq)/mean(dia_freq)*100
+
+#coeficiente de variação:
+peso$PESO <- as.numeric(peso$PESO)
+peso <- peso$PESO
+cvpeso <- sd(peso,na.rm=TRUE)/mean(peso,na.rm=TRUE)*100
+
+#Coeficiente de assimetria de pearson:
+AS<-3*(mean(peso,na.rm=TRUE) - median(peso,na.rm=TRUE))/sd(peso,na.rm=TRUE)
+
+#coef momento de assimetria
+cma <- skewness(peso, na.rm = TRUE, method = "moment", l.moment.method = "unbiased")
+
+#Coeficiente momento de curtose 
+cmc <- kurtosis(peso, na.rm = TRUE, method = "moment", l.moment.method = "unbiased")
+
+medidaspeso <- c(min(peso,na.rm=TRUE),as.numeric(quantile(peso,na.rm=TRUE)[2]),
+                 median(peso,na.rm=TRUE),mean(peso,na.rm=TRUE),
+                 as.numeric(quantile(peso,na.rm=TRUE)[4]),max(peso,na.rm=TRUE),
+                 IQR(peso,na.rm=TRUE),sd(peso,na.rm=TRUE),var(peso,na.rm=TRUE),
+                 cvpeso,AS,cma,cmc)
+
+
+#Gerando tabelas para a análise exploratória
+
+labels <- c("Mínimo","1º Quartil","Mediana","Média","3º Quartil","Máximo",
+            "Distância Interquartílica","Desvio padrão","Variância",
+            "Coeficiente de Variação","Coeficiente de assimetria de pearson",
+            "Coeficiente momento de assimetria","Coeficiente momento de curtose")
+
+labels <- as_tibble(labels)
+
+labels$est <- NA
+
+labels$est <- medidaspeso
+
+colnames(labels) <- c("Estatísticas","Valores")
+
+summary <- summary %>%
+  select(summary,IDADEMAE,APGAR1,APGAR5,PESO)
+
+colnames(sexoraca) <- c("Raça/Cor","Sexo","Contagem")
+
 #-------------------------------------------------------------------------------
 
 # b) Utilizando as funções do sparklyr, preencha os dados faltantes na idade da
@@ -846,6 +948,16 @@ dfparquet <- dfparquet %>%
     
   ) 
 
+dfparquet <- dfparquet %>%
+  select(PARTO,LOCNASC,IDADEMAE,ESCMAE,SEXO,APGAR1,APGAR5,RACACOR,CONSULTAS_bin,PESO) %>%
+  na.omit() %>%
+  glimpse()
+
+# * Dropped 1159841 rows with 'na.omit' (4760107 => 3600266)
+# Perdi cerca de 25% do banco removendo as linhas NA
+# Tive que fazer, pois esses NA estavam travando as tentativas de ML da questão 
+# 2)e. , e não seria possível imputar valores numéricos coerentes p/ essas variáveis.
+
 ###dfparquet %>%
 ###  group_by(CONSULTAS_bin) %>% 
 ###  tally() 
@@ -873,9 +985,8 @@ tbl_cache(sc, "df_train")
 tbl_cache(sc, "df_test")
 
 formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
-            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin')
+            APGAR1 + APGAR5 + RACACOR + CONSULTAS_bin + PESO')
 
-#options(java.parameters = "-Xmx8000m")
 #lr_model <- glm(formula,
 #                family = binomial(link='logit'),
 #                data = data_training)
@@ -883,10 +994,55 @@ formula <- ('PARTO ~ LOCNASC + IDADEMAE + ESCMAE + SEXO +
 #
 # Não funciona.
 
-#lr2_model <- data_training %>%
-#  ml_logistic_regression(formula)
+lr2_model <- ml_logistic_regression(x= data_training,formula=formula)
+
+# Prevendo usando o spark - Predict()
+
+validation_summary <- ml_evaluate(lr2_model, data_test) 
+
+##roc <- validation_summary$roc() %>%
+##  collect()
+
+##validation_summary$area_under_roc()
+
+# Erro: Não gera uma ROC!!
+# Testando outra abordagem
+
+pred <- ml_predict(lr2_model, data_test)
+
+ml_multiclass_classification_evaluator(pred)
+
+# [1] 0.6451208
+
+##########
+
+# Testando outros métodos:
 #
-# Também não funciona.
+# for multiclass classification
+
+rf_model <- data_training %>%
+  ml_random_forest(formula, type = "classification")
+
+pred4 <- ml_predict(rf_model, data_test)
+
+ml_multiclass_classification_evaluator(pred4)
+
+# [1] 0.6289712
+
+lr3_model <- ml_generalized_linear_regression(x= data_training,formula=formula)
+
+validation_summary3 <- ml_evaluate(lr3_model, data_test) 
+
+pred3 <- ml_predict(lr3_model, data_test)
+
+pred3 <- pred3 %>%
+  mutate(PARTO = as.numeric(PARTO))
+
+ml_regression_evaluator(pred3,label_col="PARTO")
+
+# [1] 1.297908
+
+##########
 
 #-------------------------------------------------------------------------------
 # Rodar daqui p baixo, caso crashe, p/ continuar
