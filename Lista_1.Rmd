@@ -1,20 +1,21 @@
 ---
 title: ''
-subtitle: ""
-author: ""
-date: ""
-
+author: ''
+date: ''
 output:
-  pdf_document:
-  fig_crop: false
+  html_document:
+    df_print: paged
+  fig_crop: no
+  pdf_document: null
+subtitle: ''
 highlight: tango
-number_sections: false
-fig_caption: true
-keep_tex: true
+number_sections: no
+fig_caption: yes
+keep_tex: yes
 includes:
   in_header: Estilo.sty
 classoption: a4paper
-always_allow_html: true
+always_allow_html: yes
 ---
   
   
